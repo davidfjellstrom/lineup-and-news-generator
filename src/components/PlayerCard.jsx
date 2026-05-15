@@ -91,7 +91,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
               alt={player.clubName}
               className="object-contain"
               style={{ width: badgeSize * 0.75, height: badgeSize * 0.75 }}
-              crossOrigin="anonymous"
+              onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
             />
           </div>
         )}

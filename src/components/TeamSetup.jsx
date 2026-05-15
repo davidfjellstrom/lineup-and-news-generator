@@ -104,14 +104,26 @@ function PlayerRow({ player, side, updatePlayer, deletePlayer }) {
           className="w-24 bg-transparent text-white text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
         />
       </td>
-      {/* Logo URL */}
+      {/* Logo URL + preview */}
       <td className="px-1 py-1">
-        <input
-          value={player.clubLogo}
-          onChange={(e) => up('clubLogo', e.target.value)}
-          placeholder="Logo URL"
-          className="w-28 bg-transparent text-gray-400 text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
-        />
+        <div className="flex items-center gap-1">
+          {player.clubLogo ? (
+            <img
+              src={player.clubLogo}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+          ) : (
+            <div style={{ width: 20, height: 20, flexShrink: 0 }} />
+          )}
+          <input
+            value={player.clubLogo}
+            onChange={(e) => up('clubLogo', e.target.value)}
+            placeholder="Logo URL"
+            className="w-24 bg-transparent text-gray-400 text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
+          />
+        </div>
       </td>
       {/* Delete */}
       <td className="px-1 py-1 text-center">
@@ -146,27 +158,41 @@ function TeamPanel({ side, team, match, setMatch }) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.detail || `HTTP ${res.status}`)
       }
-      const { players } = await res.json()
-      if (!Array.isArray(players) || players.length === 0) throw new Error('Inga spelare returnerades')
+      const data = await res.json()
 
-      const newStarters = players.map((p) => ({
-        id: crypto.randomUUID(),
-        number: p.number ?? '',
-        firstName: (p.firstName ?? '').toUpperCase(),
-        lastName: (p.lastName ?? '').toUpperCase(),
-        position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
-        photo: '',
-        clubLogo: '',
-        clubName: p.clubName ?? '',
-        notes: '',
-        isStarter: true,
-      }))
+      // Stöd både nytt format (starters/substitutes) och gammalt (players)
+      const starters = data.starters ?? data.players ?? []
+      const substitutes = data.substitutes ?? []
+
+      if (starters.length === 0) throw new Error('Inga spelare returnerades')
+
+      function toPlayer(p, isStarter) {
+        return {
+          id: crypto.randomUUID(),
+          number: p.number ?? '',
+          firstName: (p.firstName ?? '').toUpperCase(),
+          lastName: (p.lastName ?? '').toUpperCase(),
+          position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
+          photo: '',
+          clubLogo: p.clubLogoUrl ?? '',
+          clubName: p.clubName ?? '',
+          notes: '',
+          isStarter,
+        }
+      }
+
+      const allPlayers = [
+        ...starters.map((p) => toPlayer(p, true)),
+        ...substitutes.map((p) => toPlayer(p, false)),
+      ]
 
       setMatch((m) => ({
         ...m,
         [side]: {
           ...m[side],
-          players: [...newStarters, ...m[side].players.filter((p) => !p.isStarter)],
+          ...(data.flag  ? { flag: data.flag }   : {}),
+          ...(data.coach ? { coach: data.coach } : {}),
+          players: allPlayers,
         },
       }))
     } catch (err) {
