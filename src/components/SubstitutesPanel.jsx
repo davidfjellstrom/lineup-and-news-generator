@@ -7,29 +7,30 @@ function groupSubs(team) {
   return POS_ORDER.map((pos) => ({
     pos,
     players: subs.filter((p) => p.position === pos),
-  })).filter((g) => g.players.length > 0)
+  }))
 }
 
-function TeamSubs({ team }) {
+function TeamSubs({ team, isDropTarget, onSubDragStart }) {
   const groups = groupSubs(team)
-  if (groups.length === 0) return null
+  const hasAnySub = groups.some((g) => g.players.length > 0)
+  if (!hasAnySub) return null
 
   return (
     <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-3">
         <span className="text-sm font-bold text-gray-300">
           {team.flag} {team.name} — Substitutes
         </span>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-3">
+      <div className="flex flex-col gap-3">
         {groups.map(({ pos, players }) => (
-          <div key={pos} className="flex items-start gap-2">
+          <div key={pos} className="flex items-center gap-2 min-h-[52px]">
             <span
-              className="text-xs font-bold mt-1 px-1.5 py-0.5 rounded"
+              className="text-xs font-bold px-1.5 py-0.5 rounded self-start mt-1"
               style={{
                 background: 'rgba(255,255,255,0.1)',
                 color: '#9ca3af',
-                minWidth: 28,
+                minWidth: 32,
                 textAlign: 'center',
               }}
             >
@@ -37,7 +38,13 @@ function TeamSubs({ team }) {
             </span>
             <div className="flex flex-wrap gap-2">
               {players.map((player) => (
-                <PlayerCard key={player.id} player={player} compact />
+                <div
+                  key={player.id}
+                  style={{ cursor: 'grab' }}
+                  onMouseDown={(e) => onSubDragStart(player, e)}
+                >
+                  <PlayerCard player={player} compact />
+                </div>
               ))}
             </div>
           </div>
@@ -47,15 +54,18 @@ function TeamSubs({ team }) {
   )
 }
 
-export default function SubstitutesPanel({ homeTeam, awayTeam }) {
+export default function SubstitutesPanel({ homeTeam, awayTeam, isDropTarget, onSubDragStart }) {
   return (
     <div
-      className="flex gap-6 px-4 py-4"
-      style={{ background: 'rgba(0,0,0,0.35)' }}
+      className="flex gap-6 px-4 py-4 transition-colors"
+      style={{
+        background: isDropTarget ? 'rgba(34,197,94,0.15)' : 'rgba(0,0,0,0.35)',
+        outline: isDropTarget ? '2px solid rgba(34,197,94,0.5)' : 'none',
+      }}
     >
-      <TeamSubs team={homeTeam} />
+      <TeamSubs team={homeTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} />
       <div className="w-px bg-white/10 self-stretch" />
-      <TeamSubs team={awayTeam} />
+      <TeamSubs team={awayTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} />
     </div>
   )
 }

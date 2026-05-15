@@ -104,25 +104,20 @@ function PlayerRow({ player, side, updatePlayer, deletePlayer }) {
           className="w-24 bg-transparent text-white text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
         />
       </td>
-      {/* Logo URL + preview */}
+      {/* Logo */}
       <td className="px-1 py-1">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center">
           {player.clubLogo ? (
             <img
               src={player.clubLogo}
               alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
+              title={player.clubLogo}
+              style={{ width: 22, height: 22, objectFit: 'contain' }}
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
           ) : (
-            <div style={{ width: 20, height: 20, flexShrink: 0 }} />
+            <div className="text-gray-600 text-xs">—</div>
           )}
-          <input
-            value={player.clubLogo}
-            onChange={(e) => up('clubLogo', e.target.value)}
-            placeholder="Logo URL"
-            className="w-24 bg-transparent text-gray-400 text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
-          />
         </div>
       </td>
       {/* Delete */}
@@ -332,7 +327,7 @@ function TeamPanel({ side, team, match, setMatch }) {
                 <th className={thClass}>First</th>
                 <th className={thClass}>Last</th>
                 <th className={thClass}>Club</th>
-                <th className={thClass}>Logo URL</th>
+                <th className={thClass}>Logo</th>
                 <th className={thClass}></th>
               </tr>
             </thead>
@@ -378,7 +373,7 @@ function TeamPanel({ side, team, match, setMatch }) {
                 <th className={thClass}>First</th>
                 <th className={thClass}>Last</th>
                 <th className={thClass}>Club</th>
-                <th className={thClass}>Logo URL</th>
+                <th className={thClass}>Logo</th>
                 <th className={thClass}></th>
               </tr>
             </thead>

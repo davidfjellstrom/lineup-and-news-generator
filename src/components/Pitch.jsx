@@ -1,92 +1,184 @@
+import { useState, useRef, useEffect, useMemo } from 'react'
 import PlayerCard from './PlayerCard'
 import SubstitutesPanel from './SubstitutesPanel'
 import { groupIntoLines } from '../utils/formations'
 
-// Field marking helpers
-function HLine({ top, left, right, opacity = 0.25 }) {
-  return (
-    <div
-      className="absolute"
-      style={{
-        top: `${top}%`,
-        left: `${left}%`,
-        right: `${right !== undefined ? `${100 - right}%` : undefined}`,
-        height: 1,
-        background: `rgba(255,255,255,${opacity})`,
-      }}
-    />
-  )
-}
-
 function PenaltyBox({ side }) {
   const isHome = side === 'home'
+  const b = '1px solid rgba(255,255,255,0.28)'
+  const bl = '1px solid rgba(255,255,255,0.2)'
   return (
     <>
-      {/* Penalty area */}
-      <div
-        className="absolute"
-        style={{
-          top: '25%',
-          height: '50%',
-          width: '12%',
-          ...(isHome ? { left: 0, borderRight: '1px solid rgba(255,255,255,0.28)', borderTop: '1px solid rgba(255,255,255,0.28)', borderBottom: '1px solid rgba(255,255,255,0.28)' }
-                     : { right: 0, borderLeft: '1px solid rgba(255,255,255,0.28)', borderTop: '1px solid rgba(255,255,255,0.28)', borderBottom: '1px solid rgba(255,255,255,0.28)' }),
-        }}
-      />
-      {/* Goal area */}
-      <div
-        className="absolute"
-        style={{
-          top: '37%',
-          height: '26%',
-          width: '5%',
-          ...(isHome ? { left: 0, borderRight: '1px solid rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.2)', borderBottom: '1px solid rgba(255,255,255,0.2)' }
-                     : { right: 0, borderLeft: '1px solid rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.2)', borderBottom: '1px solid rgba(255,255,255,0.2)' }),
-        }}
-      />
+      <div className="absolute" style={{
+        top: '25%', height: '50%', width: '12%',
+        ...(isHome ? { left: 0, borderRight: b, borderTop: b, borderBottom: b }
+                   : { right: 0, borderLeft: b, borderTop: b, borderBottom: b }),
+      }} />
+      <div className="absolute" style={{
+        top: '37%', height: '26%', width: '5%',
+        ...(isHome ? { left: 0, borderRight: bl, borderTop: bl, borderBottom: bl }
+                   : { right: 0, borderLeft: bl, borderTop: bl, borderBottom: bl }),
+      }} />
     </>
   )
 }
 
-function TeamColumns({ lines, side, onNoteChange }) {
-  return (
-    <div className="flex-1 flex min-h-0">
-      {lines.map((line, i) => (
-        <div
-          key={i}
-          className="flex-1 flex flex-col items-center justify-around py-3 px-1"
-        >
-          {line.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              compact={false}
-              onNoteChange={(note) => onNoteChange(side, player.id, note)}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
+function computePositions(homeLines, awayLines) {
+  const pos = {}
+  const place = (lines, xStart, xEnd) => {
+    const n = lines.length
+    lines.forEach((line, li) => {
+      const x = n <= 1 ? (xStart + xEnd) / 2 : xStart + (li / (n - 1)) * (xEnd - xStart)
+      line.forEach((player, pi) => {
+        pos[player.id] = { x, y: (pi + 1) / (line.length + 1) * 100 }
+      })
+    })
+  }
+  place(homeLines, 5, 46)
+  place(awayLines, 54, 95)
+  return pos
 }
 
-export default function Pitch({ match, onNoteChange }) {
+export default function Pitch({ match, onNoteChange, onUpdateStarter }) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
   const awayStarters = awayTeam.players.filter((p) => p.isStarter)
-
   const homeLines = groupIntoLines(homeStarters, homeTeam.formation)
-  // Away team mirrored: reverse so GK appears on the far right
   const awayLinesDisplay = [...groupIntoLines(awayStarters, awayTeam.formation)].reverse()
+
+  const starterKey = useMemo(
+    () => [...homeStarters, ...awayStarters].map((p) => p.id).sort().join(','),
+    [homeTeam.players, awayTeam.players],
+  )
+
+  const sideOf = useMemo(() => {
+    const map = {}
+    homeTeam.players.forEach((p) => { map[p.id] = 'homeTeam' })
+    awayTeam.players.forEach((p) => { map[p.id] = 'awayTeam' })
+    return map
+  }, [homeTeam.players, awayTeam.players])
+
+  const allPlayersById = useMemo(() => {
+    const map = {}
+    ;[...homeTeam.players, ...awayTeam.players].forEach((p) => { map[p.id] = p })
+    return map
+  }, [homeTeam.players, awayTeam.players])
+
+  // Positions for starters on the pitch. Preserve manually-dragged positions across swaps.
+  const [positions, setPositions] = useState({})
+  const [draggedId, setDraggedId] = useState(null)
+  // Ghost = a substitute being dragged onto the pitch
+  const [ghost, setGhost] = useState(null) // { player, x, y }
+  // Whether a starter is currently being dragged over the subs section
+  const [hoverSubs, setHoverSubs] = useState(false)
+
+  const dragging = useRef(null) // { playerId, fromSubs }
+  const pitchRef = useRef(null)
+  const subsRef = useRef(null)
+
+  // Recompute default positions when lineup changes; preserve existing dragged positions.
+  useEffect(() => {
+    const defaults = computePositions(homeLines, awayLinesDisplay)
+    const starterIdSet = new Set([...homeStarters, ...awayStarters].map((p) => p.id))
+    setPositions((prev) => {
+      const next = {}
+      starterIdSet.forEach((id) => {
+        next[id] = prev[id] || defaults[id] || { x: 50, y: 50 }
+      })
+      return next
+    })
+  }, [starterKey, homeTeam.formation, awayTeam.formation])
+
+  useEffect(() => {
+    function onMove(e) {
+      if (!dragging.current || !pitchRef.current) return
+      const rect = pitchRef.current.getBoundingClientRect()
+      const x = Math.max(1, Math.min(99, ((e.clientX - rect.left) / rect.width) * 100))
+      const y = Math.max(1, Math.min(99, ((e.clientY - rect.top) / rect.height) * 100))
+
+      if (dragging.current.fromSubs) {
+        setGhost((g) => g ? { ...g, x, y } : g)
+      } else {
+        setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
+        // Detect if hovering over subs panel
+        const subsRect = subsRef.current?.getBoundingClientRect()
+        setHoverSubs(
+          subsRect
+            ? e.clientX >= subsRect.left && e.clientX <= subsRect.right &&
+              e.clientY >= subsRect.top && e.clientY <= subsRect.bottom
+            : false,
+        )
+      }
+    }
+
+    function onUp(e) {
+      if (!dragging.current) return
+      const { playerId, fromSubs } = dragging.current
+
+      if (fromSubs) {
+        // Sub dragged — was it dropped on the pitch?
+        const pitchRect = pitchRef.current?.getBoundingClientRect()
+        const onPitch = pitchRect &&
+          e.clientX >= pitchRect.left && e.clientX <= pitchRect.right &&
+          e.clientY >= pitchRect.top && e.clientY <= pitchRect.bottom
+        if (onPitch) {
+          onUpdateStarter(sideOf[playerId], playerId, true)
+          // Position is already set in ghost's latest x/y via onMove
+        } else {
+          // Cancelled — remove ghost position
+          setPositions((prev) => {
+            const next = { ...prev }
+            delete next[playerId]
+            return next
+          })
+        }
+        setGhost(null)
+      } else {
+        // Starter dragged — was it dropped on the subs panel?
+        const subsRect = subsRef.current?.getBoundingClientRect()
+        const onSubs = subsRect &&
+          e.clientX >= subsRect.left && e.clientX <= subsRect.right &&
+          e.clientY >= subsRect.top && e.clientY <= subsRect.bottom
+        if (onSubs) {
+          onUpdateStarter(sideOf[playerId], playerId, false)
+        }
+        setHoverSubs(false)
+      }
+
+      dragging.current = null
+      setDraggedId(null)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [sideOf, onUpdateStarter])
+
+  function startSubDrag(player, e) {
+    e.preventDefault()
+    const rect = pitchRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const x = Math.max(1, Math.min(99, ((e.clientX - rect.left) / rect.width) * 100))
+    const y = Math.max(1, Math.min(99, ((e.clientY - rect.top) / rect.height) * 100))
+    dragging.current = { playerId: player.id, fromSubs: true }
+    setDraggedId(player.id)
+    setGhost({ player, x, y })
+    // Pre-set position so it's ready if dropped
+    setPositions((prev) => ({ ...prev, [player.id]: { x, y } }))
+  }
+
+  const allStarters = [...homeStarters, ...awayStarters]
 
   return (
     <div className="px-3 py-4 min-w-0">
       <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#111827' }}>
 
-        {/* ── Team headers ── */}
+        {/* Team headers */}
         <div className="flex items-center justify-between px-5 py-3" style={{ background: '#1f2937' }}>
-          {/* Home */}
           <div>
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide">
               <span>{homeTeam.flag}</span>
@@ -97,14 +189,10 @@ export default function Pitch({ match, onNoteChange }) {
               Coach: <span className="text-gray-300">{homeTeam.coach}</span>
             </div>
           </div>
-
-          {/* Referee */}
           <div className="text-center">
             <div className="text-xs uppercase tracking-widest text-gray-500">Referee</div>
             <div className="text-sm text-gray-300 font-medium">{referee}</div>
           </div>
-
-          {/* Away */}
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
               <span className="text-green-400 text-sm font-semibold">{awayTeam.formation}</span>
@@ -117,8 +205,9 @@ export default function Pitch({ match, onNoteChange }) {
           </div>
         </div>
 
-        {/* ── Green pitch ── */}
+        {/* Green pitch */}
         <div
+          ref={pitchRef}
           className="relative"
           style={{
             background: '#1a6b3c',
@@ -126,53 +215,83 @@ export default function Pitch({ match, onNoteChange }) {
               'repeating-linear-gradient(90deg, transparent 0px, transparent 80px, rgba(0,0,0,0.07) 80px, rgba(0,0,0,0.07) 160px)',
             minHeight: 560,
             border: '2px solid rgba(255,255,255,0.15)',
+            userSelect: 'none',
+            // Subtle highlight when a sub is being dragged over the pitch
+            outline: ghost ? '2px solid rgba(255,255,255,0.25)' : 'none',
           }}
         >
-          {/* Field markings */}
           <PenaltyBox side="home" />
           <PenaltyBox side="away" />
+          <div className="absolute top-0 bottom-0"
+            style={{ left: '50%', width: 1, background: 'rgba(255,255,255,0.3)' }} />
+          <div className="absolute rounded-full" style={{
+            width: 120, height: 120,
+            border: '1px solid rgba(255,255,255,0.3)',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }} />
+          <div className="absolute rounded-full" style={{
+            width: 6, height: 6,
+            background: 'rgba(255,255,255,0.55)',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }} />
 
-          {/* Center line */}
-          <div
-            className="absolute top-0 bottom-0"
-            style={{ left: '50%', width: 1, background: 'rgba(255,255,255,0.3)' }}
-          />
+          {/* Starters */}
+          {allStarters.map((player) => {
+            const pos = positions[player.id]
+            if (!pos) return null
+            return (
+              <div
+                key={player.id}
+                style={{
+                  position: 'absolute',
+                  left: `${pos.x}%`,
+                  top: `${pos.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  cursor: draggedId === player.id ? 'grabbing' : 'grab',
+                  zIndex: draggedId === player.id ? 20 : 1,
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  dragging.current = { playerId: player.id, fromSubs: false }
+                  setDraggedId(player.id)
+                }}
+              >
+                <PlayerCard
+                  player={player}
+                  compact={false}
+                  onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
+                />
+              </div>
+            )
+          })}
 
-          {/* Center circle */}
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: 120,
-              height: 120,
-              border: '1px solid rgba(255,255,255,0.3)',
-              top: '50%',
-              left: '50%',
+          {/* Ghost: substitute being dragged onto the pitch */}
+          {ghost && (
+            <div style={{
+              position: 'absolute',
+              left: `${ghost.x}%`,
+              top: `${ghost.y}%`,
               transform: 'translate(-50%, -50%)',
-            }}
-          />
-
-          {/* Center dot */}
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: 6,
-              height: 6,
-              background: 'rgba(255,255,255,0.55)',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-            }}
-          />
-
-          {/* Players — absolute overlay so they fill the pitch */}
-          <div className="absolute inset-0 flex">
-            <TeamColumns lines={homeLines} side="homeTeam" onNoteChange={onNoteChange} />
-            <TeamColumns lines={awayLinesDisplay} side="awayTeam" onNoteChange={onNoteChange} />
-          </div>
+              cursor: 'grabbing',
+              zIndex: 20,
+              opacity: 0.85,
+            }}>
+              <PlayerCard player={ghost.player} compact={false} onNoteChange={() => {}} />
+            </div>
+          )}
         </div>
 
-        {/* ── Substitutes ── */}
-        <SubstitutesPanel homeTeam={homeTeam} awayTeam={awayTeam} />
+        {/* Substitutes — drop target when dragging a starter */}
+        <div ref={subsRef}>
+          <SubstitutesPanel
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+            isDropTarget={hoverSubs}
+            onSubDragStart={startSubDrag}
+          />
+        </div>
       </div>
     </div>
   )

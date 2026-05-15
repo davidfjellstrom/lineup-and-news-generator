@@ -60,7 +60,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
             height: photoSize,
             top: 4,
             left: 4,
-            background: '#374151',
+            background: '#6B7280',
           }}
         >
           {player.photo ? (

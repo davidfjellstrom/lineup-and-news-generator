@@ -2,12 +2,28 @@ import { useState } from 'react'
 import Pitch from './components/Pitch'
 import TeamSetup from './components/TeamSetup'
 import NewsFeed from './components/NewsFeed'
-import { sampleMatch } from './data/sampleMatch'
+const emptyMatch = {
+  homeTeam: { name: '', flag: '', formation: '4-3-3', coach: '', players: [] },
+  awayTeam: { name: '', flag: '', formation: '4-3-3', coach: '', players: [] },
+  referee: '',
+}
 
 export default function App() {
-  const [match, setMatch] = useState(sampleMatch)
+  const [match, setMatch] = useState(emptyMatch)
   const [view, setView] = useState('setup') // 'setup' | 'pitch' | 'news'
   const [exporting, setExporting] = useState(false)
+
+  function updatePlayerStarter(teamKey, playerId, isStarter) {
+    setMatch((m) => ({
+      ...m,
+      [teamKey]: {
+        ...m[teamKey],
+        players: m[teamKey].players.map((p) =>
+          p.id === playerId ? { ...p, isStarter } : p
+        ),
+      },
+    }))
+  }
 
   function updatePlayerNote(teamKey, playerId, note) {
     setMatch((m) => ({
@@ -115,7 +131,7 @@ export default function App() {
           />
         )}
         {view === 'pitch' && (
-          <Pitch match={match} onNoteChange={updatePlayerNote} />
+          <Pitch match={match} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
         )}
         {view === 'news' && <NewsFeed />}
       </main>
