@@ -3,6 +3,7 @@ import json
 import re
 import logging
 import urllib.request
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException, Query
@@ -37,6 +38,26 @@ def get_client() -> anthropic.Anthropic:
     if not api_key:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
     return anthropic.Anthropic(api_key=api_key)
+
+
+def _af_headers() -> dict:
+    key = os.environ.get("API_FOOTBALL_KEY")
+    if not key:
+        raise HTTPException(status_code=500, detail="API_FOOTBALL_KEY not configured")
+    return {"x-apisports-key": key}
+
+
+def _af_get(path: str, params: dict) -> dict:
+    """GET request to api-sports.io football API."""
+    query = "&".join(f"{k}={urllib.parse.quote(str(v))}" for k, v in params.items())
+    url = f"https://v3.football.api-sports.io/{path}?{query}"
+    req = urllib.request.Request(url, headers=_af_headers())
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode())
+
+
+def _map_position(pos: str) -> str:
+    return {"G": "GK", "D": "DEF", "M": "MID", "F": "FWD"}.get(pos, "MID")
 
 
 _SLUG_STRIP_PREFIXES = ["fc-", "afc-", "ac-", "as-", "ss-", "sc-", "rc-", "vfl-", "sv-", "rb-", "cf-", "bvb-"]
@@ -273,7 +294,28 @@ def get_lineup(
     team: str = Query(...),
     formation: str = Query(default="4-3-3"),
     mode: str = Query(default="pre-match"),
+    fixture_id: int = Query(default=None),
 ):
+    # Match mode with a confirmed fixture → use API-Football
+    if mode == "match" and fixture_id:
+        data = _lineup_from_api_football(fixture_id, team)
+        all_players = data["starters"] + data["substitutes"]
+        # Logo scraping still runs as usual — API-Football doesn't provide club logos
+        # Claude already filled in clubCountry/clubSlug for pre-match; for match mode
+        # those fields are blank so logo scraping is skipped gracefully.
+        unique_pairs = list({(p.get("clubCountry", ""), p.get("clubSlug", ""))
+                             for p in all_players if p.get("clubSlug")})
+        if unique_pairs:
+            log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                urls = list(ex.map(lambda pair: get_club_logo_url(*pair), unique_pairs))
+            logo_map = dict(zip(unique_pairs, urls))
+            for p in all_players:
+                key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
+                p["clubLogoUrl"] = logo_map.get(key, "")
+        return data
+
+    # Pre-match mode (or match mode without fixture_id) → use Claude
     client = get_client()
     prompt = _build_lineup_prompt(team, formation, mode)
 
@@ -289,7 +331,6 @@ def get_lineup(
 
         all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
 
-        # Resolve club logos in parallel — scrape football-logos.cc with Claude's country+slug
         unique_pairs = list({(p.get("clubCountry", ""), p.get("clubSlug", ""))
                              for p in all_players if p.get("clubSlug")})
         log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
@@ -310,6 +351,117 @@ def get_lineup(
         return {"players": [], "raw": text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/fixtures")
+def get_fixtures(team: str = Query(...)):
+    """Return upcoming WC 2026 fixtures for a team name using API-Football."""
+    try:
+        # Step 1: resolve team name → API-Football team ID
+        teams_resp = _af_get("teams", {"name": team, "league": 1, "season": 2026})
+        teams = teams_resp.get("response", [])
+        if not teams:
+            raise HTTPException(status_code=404, detail=f"Team '{team}' not found in WC 2026")
+        team_id = teams[0]["team"]["id"]
+        team_name = teams[0]["team"]["name"]
+
+        # Step 2: fetch all WC 2026 fixtures for that team
+        fixtures_resp = _af_get("fixtures", {"team": team_id, "league": 1, "season": 2026})
+        fixtures = fixtures_resp.get("response", [])
+
+        result = []
+        for f in fixtures:
+            fixture = f["fixture"]
+            home = f["teams"]["home"]
+            away = f["teams"]["away"]
+            result.append({
+                "fixtureId": fixture["id"],
+                "date": fixture["date"],
+                "status": fixture["status"]["short"],
+                "home": home["name"],
+                "away": away["name"],
+                "homeId": home["id"],
+                "awayId": away["id"],
+            })
+
+        return {"teamId": team_id, "teamName": team_name, "fixtures": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
+    """Fetch confirmed lineup from API-Football for a given fixture."""
+    # Parallel fetch: lineup structure + full player names
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_lineups = ex.submit(_af_get, "fixtures/lineups", {"fixture": fixture_id})
+        f_players = ex.submit(_af_get, "players", {"fixture": fixture_id})
+        lineups_resp = f_lineups.result()
+        players_resp = f_players.result()
+
+    lineups = lineups_resp.get("response", [])
+    if not lineups:
+        raise HTTPException(
+            status_code=404,
+            detail="Lineup not released yet — try again closer to kickoff (~60 min before)."
+        )
+
+    # Build full-name lookup: player_id → {firstname, lastname}
+    full_names: dict = {}
+    for entry in players_resp.get("response", []):
+        p = entry.get("player", {})
+        full_names[p["id"]] = {
+            "firstName": (p.get("firstname") or "").upper(),
+            "lastName": (p.get("lastname") or p.get("name", "").split()[-1]).upper(),
+        }
+
+    # Find the team we want (home or away)
+    team_name_lower = team_name.lower()
+    team_data = next(
+        (t for t in lineups if t["team"]["name"].lower() == team_name_lower),
+        lineups[0]  # fallback to first team if name doesn't match exactly
+    )
+
+    coach = (team_data.get("coach") or {}).get("name", "").upper()
+    flag = ""  # flag is already set in app state from the team picker
+
+    def build_player(p_entry, is_starter: bool) -> dict:
+        p = p_entry["player"]
+        pid = p["id"]
+        names = full_names.get(pid, {})
+        # Fallback: split the abbreviated name if full name not in players response
+        fallback_name = p.get("name", "")
+        parts = fallback_name.split(". ", 1)
+        first_fb = parts[0] if len(parts) > 1 else ""
+        last_fb = parts[-1]
+        return {
+            "id": str(pid),
+            "number": p.get("number") or 0,
+            "firstName": names.get("firstName") or first_fb.upper(),
+            "lastName": names.get("lastName") or last_fb.upper(),
+            "position": _map_position(p.get("pos", "")),
+            "photo": "",
+            "clubLogo": "",
+            "clubName": "",
+            "notes": "",
+            "isStarter": is_starter,
+            # Keep clubCountry/clubSlug blank — logo scraping runs later
+            "clubCountry": "",
+            "clubSlug": "",
+        }
+
+    starters = [build_player(p, True) for p in team_data.get("startXI", [])]
+    substitutes = [build_player(p, False) for p in team_data.get("substitutes", [])]
+
+    return {
+        "flag": flag,
+        "coach": coach,
+        "source": f"API-Football (fixture #{fixture_id})",
+        "mode": "match",
+        "starters": starters,
+        "substitutes": substitutes,
+    }
 
 
 # Vercel / AWS Lambda entry point
