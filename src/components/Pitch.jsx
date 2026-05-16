@@ -45,7 +45,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-export default function Pitch({ match, onNoteChange, onUpdateStarter }) {
+export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter }) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -195,9 +195,19 @@ export default function Pitch({ match, onNoteChange, onUpdateStarter }) {
               Coach: <span className="text-gray-300">{homeTeam.coach}</span>
             </div>
           </div>
-          <div className="text-center">
+          <div className="text-center flex flex-col items-center gap-1">
             <div className="text-xs uppercase tracking-widest text-gray-500">Referee</div>
             <div className="text-sm text-gray-300 font-medium">{referee}</div>
+            <div
+              className="text-xs font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: matchMode === 'match' ? 'rgba(20,83,45,0.8)' : 'rgba(120,53,15,0.8)',
+                color: matchMode === 'match' ? '#86efac' : '#fde68a',
+                border: `1px solid ${matchMode === 'match' ? '#16a34a' : '#d97706'}`,
+              }}
+            >
+              {matchMode === 'match' ? '● Bekräftad' : '◌ Estimerad'}
+            </div>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">

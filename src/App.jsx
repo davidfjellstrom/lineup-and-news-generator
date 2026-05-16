@@ -12,6 +12,7 @@ export default function App() {
   const [match, setMatch] = useState(emptyMatch)
   const [view, setView] = useState('setup') // 'setup' | 'pitch' | 'news'
   const [exporting, setExporting] = useState(false)
+  const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
 
   function updatePlayerStarter(teamKey, playerId, isStarter) {
     setMatch((m) => ({
@@ -95,7 +96,34 @@ export default function App() {
           {navBtn('news', 'News')}
         </nav>
 
-        <div style={{ minWidth: 120 }} className="flex justify-end">
+        <div style={{ minWidth: 120 }} className="flex justify-end items-center gap-2">
+          {/* Match mode toggle */}
+          <div
+            className="flex items-center rounded-lg overflow-hidden text-xs font-semibold"
+            style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <button
+              onClick={() => setMatchMode('pre-match')}
+              className="px-3 py-1.5 transition-colors"
+              style={{
+                background: matchMode === 'pre-match' ? '#854d0e' : 'transparent',
+                color: matchMode === 'pre-match' ? '#fde68a' : '#6b7280',
+              }}
+            >
+              Pre-match
+            </button>
+            <button
+              onClick={() => setMatchMode('match')}
+              className="px-3 py-1.5 transition-colors"
+              style={{
+                background: matchMode === 'match' ? '#14532d' : 'transparent',
+                color: matchMode === 'match' ? '#86efac' : '#6b7280',
+              }}
+            >
+              Match
+            </button>
+          </div>
+
           {view === 'pitch' && (
             <button
               onClick={exportPNG}
@@ -127,11 +155,12 @@ export default function App() {
           <TeamSetup
             match={match}
             setMatch={setMatch}
+            matchMode={matchMode}
             onViewLineup={() => setView('pitch')}
           />
         )}
         {view === 'pitch' && (
-          <Pitch match={match} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
+          <Pitch match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
         )}
         {view === 'news' && <NewsFeed />}
       </main>
