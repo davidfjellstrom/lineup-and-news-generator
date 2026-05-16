@@ -226,32 +226,54 @@ def get_player_info(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/lineup")
-def get_lineup(
-    team: str = Query(...),
-    formation: str = Query(default="4-3-3"),
-):
-    client = get_client()
-    prompt = f"""Search FIFA.com first, then Transfermarkt or official football federation sites, for {team}'s official World Cup 2026 squad registration (World Cup 2026 squads are now registered — always use the official FIFA 2026 data).
-
-Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
-
-Return ONLY a valid JSON object with these exact keys:
-- flag: the flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
-- coach: head coach full name in UPPERCASE
-- starters: array of exactly 11 starting players (most likely XI based on recent matches)
-- substitutes: array of 7–12 squad players not in the starting XI
-
-Each player (in both arrays) has:
+def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
+    player_schema = f"""Each player (in both arrays) has:
 - number: official jersey number as registered with FIFA (integer)
 - firstName: first name in UPPERCASE
 - lastName: last name / surname in UPPERCASE
 - position: one of GK, DEF, MID, FWD
 - clubName: current club name in English (e.g. "Arsenal", "Bayern Munich", "Real Madrid")
 - clubCountry: lowercase country where the CLUB plays (not the national team), e.g. "england", "germany", "spain", "italy", "france", "sweden", "portugal", "netherlands", "turkey", "saudi-arabia"
-- clubSlug: club's slug on football-logos.cc — lowercase with hyphens, no accents. Examples: "arsenal", "fc-bayern-munchen", "atletico-madrid", "aik", "mjallby-aif", "al-nassr". Derive it from the club's native name if not English (e.g. Bayern Munich → "fc-bayern-munchen")
+- clubSlug: club's slug on football-logos.cc — lowercase with hyphens, no accents. Examples: "arsenal", "fc-bayern-munchen", "atletico-madrid", "aik", "mjallby-aif", "al-nassr". Derive it from the club's native name if not English (e.g. Bayern Munich → "fc-bayern-munchen")"""
+
+    json_shape = f"""Return ONLY a valid JSON object with these exact keys:
+- flag: the flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
+- coach: head coach full name in UPPERCASE
+- source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
+- starters: array of exactly 11 starting players
+- substitutes: array of 7–12 squad players not in the starting XI
+
+{player_schema}
 
 No markdown fences, no explanation — pure JSON object."""
+
+    if mode == "match":
+        return f"""Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
+
+Search UEFA.com, FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
+
+Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
+
+{json_shape}"""
+    else:
+        # pre-match (default)
+        return f"""Search FIFA.com first, then Transfermarkt or official football federation sites, for {team}'s official World Cup 2026 squad registration (World Cup 2026 squads are now registered — always use the official FIFA 2026 data).
+
+Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
+
+The starters array should reflect the most likely XI based on recent matches and current form.
+
+{json_shape}"""
+
+
+@app.get("/api/lineup")
+def get_lineup(
+    team: str = Query(...),
+    formation: str = Query(default="4-3-3"),
+    mode: str = Query(default="pre-match"),
+):
+    client = get_client()
+    prompt = _build_lineup_prompt(team, formation, mode)
 
     try:
         text = run_with_search(client, prompt, max_uses=5, label=team)
@@ -260,6 +282,8 @@ No markdown fences, no explanation — pure JSON object."""
             data = json.loads(match.group())
         else:
             data = {"players": extract_json(text)}
+
+        data["mode"] = mode
 
         all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
 
