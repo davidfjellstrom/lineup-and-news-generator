@@ -23,6 +23,12 @@ function PenaltyBox({ side }) {
   )
 }
 
+// Percentage bounds keeping players away from the pitch edges and the centre line
+const HOME_X_START = 5
+const HOME_X_END   = 46
+const AWAY_X_START = 54
+const AWAY_X_END   = 95
+
 function computePositions(homeLines, awayLines) {
   const pos = {}
   const place = (lines, xStart, xEnd) => {
@@ -34,8 +40,8 @@ function computePositions(homeLines, awayLines) {
       })
     })
   }
-  place(homeLines, 5, 46)
-  place(awayLines, 54, 95)
+  place(homeLines, HOME_X_START, HOME_X_END)
+  place(awayLines, AWAY_X_START, AWAY_X_END)
   return pos
 }
 

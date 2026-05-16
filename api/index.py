@@ -22,9 +22,11 @@ log = logging.getLogger("lineup-api")
 
 app = FastAPI(title="Lineup Generator API")
 
+_ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_methods=["GET"],
     allow_headers=["*"],
 )
