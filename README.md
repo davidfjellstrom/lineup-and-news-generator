@@ -1,6 +1,6 @@
 # World Cup 2026 — Lineup & News Generator
 
-AI-powered lineup sheet and live news feed built for TV football commentators. Fetches official squad data, displays visual pitch formations with club badges, and pulls real-time match news — all via Claude AI.
+AI-powered lineup sheet and live news feed built for TV football commentators. Fetches official squad data, displays a visual pitch with both teams, resolves club badges automatically, and pulls live football news via Claude AI.
 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi) ![Claude](https://img.shields.io/badge/Claude-Sonnet_4.6-8B5CF6) ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel)
 
@@ -8,13 +8,14 @@ AI-powered lineup sheet and live news feed built for TV football commentators. F
 
 ## Features
 
-- **AI squad fetch** — one click pulls starting XI + substitutes, coach, flag and jersey numbers for any national team from official FIFA/Transfermarkt data
-- **Visual pitch** — green field with both teams side by side in their formation, players positioned by line (GK → DEF → MID → FWD)
-- **Club badges** — automatically resolved from [football-logos.cc](https://football-logos.cc) with fuzzy country-page matching (covers even obscure clubs)
-- **Editable commentator notes** — click any player card to add live notes during broadcast
-- **Substitutes panel** — bench players grouped by position
-- **Live news feed** — AI-powered news search with quick filters per team or topic
-- **PNG export** — export the full pitch view as an image via html2canvas
+- **AI squad fetch** — one click pulls starting XI + substitutes, coach, flag and jersey numbers for a national team
+- **Match mode with confirmed fixtures** — switch to `match` mode and choose upcoming WC 2026 fixtures to fetch confirmed lineups via API-Football
+- **Dual-team visual pitch** — two teams displayed side by side, with player positions arranged by GK → DEF → MID → FWD
+- **Club badges** — automatically resolves logos from [football-logos.cc](https://football-logos.cc) using fuzzy matching across country pages
+- **Editable commentator notes** — add live notes directly on player cards
+- **Fixture selector** — search WC 2026 teams and select upcoming fixtures for match-specific lineups
+- **Live news feed** — AI-powered news search with quick filter buttons for football topics
+- **PNG export** — save the visible lineup pitch as an image using `html2canvas`
 
 ## Tech Stack
 
@@ -33,6 +34,7 @@ AI-powered lineup sheet and live news feed built for TV football commentators. F
 - Node.js 18+
 - Python 3.11+
 - An [Anthropic API key](https://console.anthropic.com)
+- An [API-Football API key](https://www.api-football.com) for match fixture lookup and confirmed lineups
 
 ### Installation
 
@@ -47,8 +49,10 @@ pip install -r api/requirements.txt
 
 Create a `.env` file in the project root:
 
-```
+```bash
 ANTHROPIC_API_KEY=sk-ant-...
+API_FOOTBALL_KEY=your-api-football-key
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 ### Run locally
@@ -69,17 +73,18 @@ Open [http://localhost:5173](http://localhost:5173).
 ├── src/
 │   ├── App.jsx                  # Root state, navigation, PNG export
 │   ├── components/
-│   │   ├── Pitch.jsx            # Green field layout, formations
-│   │   ├── PlayerCard.jsx       # Player card with badge, notes
-│   │   ├── TeamSetup.jsx        # Team editor, AI fetch button
-│   │   ├── SubstitutesPanel.jsx # Bench grouped by position
-│   │   └── NewsFeed.jsx         # News search + article cards
-│   ├── utils/formations.js      # Formation logic, groupIntoLines()
-│   └── data/sampleMatch.js      # Default data (Turkey vs Portugal)
+│   │   ├── Pitch.jsx            # Visual pitch layout and note handling
+│   │   ├── PlayerCard.jsx       # Player cards with editable notes
+│   │   ├── TeamSetup.jsx        # Team picker, fixture selector and AI fetch
+│   │   ├── SubstitutesPanel.jsx # Bench players grouped by position
+│   │   └── NewsFeed.jsx         # Live news search UI
+│   ├── utils/formations.js      # Formation line grouping logic
+│   └── data/wc2026Teams.js      # WC 2026 team list and flags
 ├── api/
-│   └── index.py                 # FastAPI: /lineup, /news, /player-info
+│   ├── index.py                 # FastAPI endpoints for lineup, news, fixtures, player info
+│   └── requirements.txt         # Python dependencies
 ├── vercel.json
-└── .env
+└── README.md
 ```
 
 ## API Endpoints
@@ -88,8 +93,10 @@ Open [http://localhost:5173](http://localhost:5173).
 |---|---|
 | `GET /api/health` | Health check |
 | `GET /api/lineup?team=Sweden&formation=4-3-3` | Fetch squad via AI |
-| `GET /api/news?q=Sweden+World+Cup` | Fetch news via AI |
-| `GET /api/player-info?name=Gyokeres&team=Sweden` | Player bio via AI |
+| `GET /api/lineup?team=Sweden&formation=4-3-3&mode=match&fixture_id=123` | Fetch confirmed lineup for a fixture |
+| `GET /api/fixtures?team=Sweden` | Fetch upcoming WC 2026 fixtures via API-Football |
+| `GET /api/news?q=Sweden+World+Cup` | Fetch live news via AI |
+| `GET /api/player-info?name=Gyokeres&team=Sweden` | Fetch a commentator-ready player bio via AI |
 
 ## Deploy to Vercel
 
@@ -97,15 +104,18 @@ Open [http://localhost:5173](http://localhost:5173).
 vercel deploy
 ```
 
-Set `ANTHROPIC_API_KEY` as an environment variable in the Vercel dashboard.
+Set `ANTHROPIC_API_KEY` and `API_FOOTBALL_KEY` as environment variables in the Vercel dashboard.
 
 ## Data Model
 
 ```js
 player: {
-  id, number, firstName, lastName,
+  id,
+  number,
+  firstName,
+  lastName,
   position,   // "GK" | "DEF" | "MID" | "FWD"
-  photo,      // URL (optional, manual)
+  photo,      // URL (optional)
   clubLogo,   // URL resolved from football-logos.cc
   clubName,
   notes,      // editable commentator notes
@@ -117,4 +127,5 @@ player: {
 
 - Player photos require manual URL input (rights restrictions)
 - Match save/load not yet implemented
-- No mobile layout
+- No dedicated mobile layout
+- `player-info` endpoint exists, but UI wiring is not yet complete
