@@ -311,6 +311,40 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
     }))
   }
 
+  function saveTeam() {
+    const defaultName = team.name
+      ? team.name.charAt(0) + team.name.slice(1).toLowerCase()
+      : 'lag'
+    const input = window.prompt('Döp filen:', defaultName)
+    if (input === null) return // avbruten
+    const fileName = (input.trim() || defaultName).replace(/\.json$/i, '') + '.json'
+    const blob = new Blob([JSON.stringify(team, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function loadTeam(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const loaded = JSON.parse(ev.target.result)
+        // Ge varje spelare ett nytt id för att undvika kollisioner
+        const players = (loaded.players ?? []).map((p) => ({ ...p, id: crypto.randomUUID() }))
+        setMatch((m) => ({ ...m, [side]: { ...loaded, players } }))
+      } catch {
+        alert('Filen kunde inte läsas — kontrollera att det är en giltig lagfil (.json).')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = '' // återställ så samma fil kan laddas igen
+  }
+
   const thClass = 'px-1 py-1.5 text-left text-xs font-medium text-gray-400 whitespace-nowrap'
   const sectionClass = 'text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-3'
 
@@ -356,6 +390,31 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
               Källa: {source}
             </p>
           )}
+          {/* Spara / Ladda */}
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={saveTeam}
+              disabled={team.players.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-40 hover:brightness-110"
+              style={{ background: '#1d4ed8' }}
+              title="Spara laget som en fil"
+            >
+              💾 Spara lag
+            </button>
+            <label
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white cursor-pointer transition-colors hover:brightness-110"
+              style={{ background: '#374151' }}
+              title="Ladda ett sparat lag från fil"
+            >
+              📂 Ladda lag
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={loadTeam}
+              />
+            </label>
+          </div>
         </div>
 
         {/* Fixture picker — only in match mode */}

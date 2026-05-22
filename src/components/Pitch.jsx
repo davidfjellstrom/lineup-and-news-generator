@@ -269,6 +269,7 @@ export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter 
                   zIndex: draggedId === player.id ? 20 : 1,
                 }}
                 onMouseDown={(e) => {
+                  if (e.target.contentEditable === 'true') return
                   e.preventDefault()
                   dragging.current = { playerId: player.id, fromSubs: false }
                   setDraggedId(player.id)
