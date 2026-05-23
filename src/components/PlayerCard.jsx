@@ -126,8 +126,8 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
         )}
       </div>
 
-      {/* Editable notes — only on full-size pitch cards */}
-      {!compact && (
+      {/* Editable notes */}
+      {onNoteChange && (
         <div
           ref={notesRef}
           contentEditable
@@ -137,12 +137,12 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
           style={{
             fontSize: fontSize.note,
             color: 'rgba(255,255,230,0.85)',
-            minWidth: 56,
-            maxWidth: 88,
+            minWidth: compact ? 48 : 56,
+            maxWidth: compact ? 68 : 88,
             marginTop: 2,
             lineHeight: '1.3',
           }}
-          onBlur={(e) => onNoteChange && onNoteChange(e.currentTarget.textContent)}
+          onBlur={(e) => onNoteChange(e.currentTarget.textContent)}
         />
       )}
     </div>
