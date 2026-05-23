@@ -40,6 +40,10 @@ export default function App() {
     }))
   }
 
+  function updateFormation(teamKey, formation) {
+    setMatch((m) => ({ ...m, [teamKey]: { ...m[teamKey], formation } }))
+  }
+
   async function exportPPTX() {
     if (!pitchRef.current) return
     setExportingPptx(true)
@@ -184,7 +188,7 @@ export default function App() {
           />
         )}
         {view === 'pitch' && (
-          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} />
         )}
         {view === 'news' && <NewsFeed />}
       </main>

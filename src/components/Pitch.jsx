@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import PlayerCard from './PlayerCard'
 import SubstitutesPanel from './SubstitutesPanel'
-import { groupIntoLines } from '../utils/formations'
+import { groupIntoLines, FORMATIONS } from '../utils/formations'
 
 function PenaltyBox({ side }) {
   const isHome = side === 'home'
@@ -45,7 +45,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpdateStarter }, ref) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpdateStarter, onFormationChange }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -197,7 +197,14 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide">
               <span>{homeTeam.flag}</span>
               <span>{homeTeam.name}</span>
-              <span className="text-green-400 text-sm font-semibold">{homeTeam.formation}</span>
+              <select
+                value={homeTeam.formation}
+                onChange={(e) => onFormationChange('homeTeam', e.target.value)}
+                className="text-sm font-semibold rounded px-1 py-0.5 cursor-pointer"
+                style={{ background: '#14532d', color: '#4ade80', border: 'none', outline: 'none' }}
+              >
+                {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
             </div>
             <div className="text-xs text-gray-400 mt-0.5">
               Coach: <span className="text-gray-300">{homeTeam.coach}</span>
@@ -219,7 +226,14 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
-              <span className="text-green-400 text-sm font-semibold">{awayTeam.formation}</span>
+              <select
+                value={awayTeam.formation}
+                onChange={(e) => onFormationChange('awayTeam', e.target.value)}
+                className="text-sm font-semibold rounded px-1 py-0.5 cursor-pointer"
+                style={{ background: '#14532d', color: '#4ade80', border: 'none', outline: 'none' }}
+              >
+                {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
               <span>{awayTeam.name}</span>
               <span>{awayTeam.flag}</span>
             </div>
