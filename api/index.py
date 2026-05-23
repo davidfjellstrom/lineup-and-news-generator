@@ -7,6 +7,7 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 import anthropic
@@ -207,6 +208,25 @@ def extract_json(text: str):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/proxy-image")
+def proxy_image(url: str = Query(...)):
+    """Server-side image proxy so the browser can embed cross-origin images in PPTX exports."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme")
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            content_type = resp.headers.get("Content-Type", "image/jpeg")
+        return Response(content=data, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.get("/api/news")
