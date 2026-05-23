@@ -12,14 +12,14 @@ const Silhouette = ({ size }) => (
 )
 
 export default function PlayerCard({ player, compact = false, onNoteChange, isTop5 = false }) {
-  const photoSize = compact ? 38 : 52
-  const badgeSize = compact ? 16 : 20
+  const photoSize = compact ? 38 : 56
+  const badgeSize = compact ? 16 : 22
   const fontSize = {
-    first: compact ? 8 : 9,
-    last: compact ? 9 : 11,
-    club: compact ? 7 : 8,
+    first: compact ? 8 : 10,
+    last: compact ? 9 : 13,
+    club: compact ? 7 : 9,
     note: 9,
-    stats: compact ? 7 : 8,
+    stats: compact ? 7 : 10,
   }
   const notesRef = useRef(null)
 
@@ -32,7 +32,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, isTo
   return (
     <div
       className="flex flex-col items-center select-none"
-      style={{ maxWidth: compact ? 72 : 92 }}
+      style={{ maxWidth: compact ? 72 : 104 }}
     >
       {/* Photo area with badges */}
       <div
