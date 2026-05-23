@@ -227,11 +227,18 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
           firstName: (p.firstName ?? '').toUpperCase(),
           lastName: (p.lastName ?? '').toUpperCase(),
           position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
+          positionLabel: p.positionLabel ?? '',
           photo: '',
           clubLogo: p.clubLogoUrl ?? '',
           clubName: p.clubName ?? '',
           notes: '',
           isStarter,
+          age: p.age ?? null,
+          height: p.height ?? null,
+          foot: p.foot ?? null,
+          caps: p.caps ?? null,
+          goals: p.goals ?? null,
+          marketValue: p.marketValue ?? null,
         }
       }
 
@@ -244,8 +251,11 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
         ...m,
         [side]: {
           ...m[side],
-          ...(data.flag  ? { flag: data.flag }   : {}),
-          ...(data.coach ? { coach: data.coach } : {}),
+          ...(data.flag        ? { flag: data.flag }               : {}),
+          ...(data.coach       ? { coach: data.coach }             : {}),
+          ...(data.fifaRanking != null ? { fifaRanking: data.fifaRanking } : {}),
+          ...(data.avgAge      != null ? { avgAge: data.avgAge }   : {}),
+          ...(data.squadValue  != null ? { squadValue: data.squadValue }   : {}),
           players: allPlayers,
         },
       }))
