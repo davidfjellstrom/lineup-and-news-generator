@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Pitch from './components/Pitch'
 import TeamSetup from './components/TeamSetup'
 import NewsFeed from './components/NewsFeed'
@@ -13,6 +13,8 @@ export default function App() {
   const [view, setView] = useState('setup') // 'setup' | 'pitch' | 'news'
   const [exporting, setExporting] = useState(false)
   const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
+  const pitchRef = useRef(null)
+  const [exportingPptx, setExportingPptx] = useState(false)
 
   function updatePlayerStarter(teamKey, playerId, isStarter) {
     setMatch((m) => ({
@@ -36,6 +38,18 @@ export default function App() {
         ),
       },
     }))
+  }
+
+  async function exportPPTX() {
+    if (!pitchRef.current) return
+    setExportingPptx(true)
+    try {
+      await pitchRef.current.exportPPTX()
+    } catch (err) {
+      console.error('PPTX export failed:', err)
+    } finally {
+      setExportingPptx(false)
+    }
   }
 
   async function exportPNG() {
@@ -125,14 +139,24 @@ export default function App() {
           </div>
 
           {view === 'pitch' && (
-            <button
-              onClick={exportPNG}
-              disabled={exporting}
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-              style={{ background: '#374151' }}
-            >
-              {exporting ? 'Exporting…' : '⬇ Export PNG'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={exportPNG}
+                disabled={exporting}
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ background: '#374151' }}
+              >
+                {exporting ? 'Exporting…' : '⬇ PNG'}
+              </button>
+              <button
+                onClick={exportPPTX}
+                disabled={exportingPptx}
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ background: '#374151' }}
+              >
+                {exportingPptx ? 'Exporting…' : '⬇ PPTX'}
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -160,7 +184,7 @@ export default function App() {
           />
         )}
         {view === 'pitch' && (
-          <Pitch match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} />
         )}
         {view === 'news' && <NewsFeed />}
       </main>

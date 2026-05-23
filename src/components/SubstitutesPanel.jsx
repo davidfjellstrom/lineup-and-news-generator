@@ -10,7 +10,7 @@ function groupSubs(team) {
   }))
 }
 
-function TeamSubs({ team, isDropTarget, onSubDragStart }) {
+function TeamSubs({ team, isDropTarget, onSubDragStart, onNoteChange }) {
   const groups = groupSubs(team)
   const hasAnySub = groups.some((g) => g.players.length > 0)
   if (!hasAnySub) return null
@@ -43,7 +43,11 @@ function TeamSubs({ team, isDropTarget, onSubDragStart }) {
                   style={{ cursor: 'grab' }}
                   onMouseDown={(e) => onSubDragStart(player, e)}
                 >
-                  <PlayerCard player={player} compact />
+                  <PlayerCard
+                    player={player}
+                    compact
+                    onNoteChange={onNoteChange ? (note) => onNoteChange(player.id, note) : undefined}
+                  />
                 </div>
               ))}
             </div>
@@ -54,7 +58,7 @@ function TeamSubs({ team, isDropTarget, onSubDragStart }) {
   )
 }
 
-export default function SubstitutesPanel({ homeTeam, awayTeam, isDropTarget, onSubDragStart }) {
+export default function SubstitutesPanel({ homeTeam, awayTeam, isDropTarget, onSubDragStart, onNoteChange }) {
   return (
     <div
       className="flex gap-6 px-4 py-4 transition-colors"
@@ -63,9 +67,9 @@ export default function SubstitutesPanel({ homeTeam, awayTeam, isDropTarget, onS
         outline: isDropTarget ? '2px solid rgba(34,197,94,0.5)' : 'none',
       }}
     >
-      <TeamSubs team={homeTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} />
+      <TeamSubs team={homeTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('homeTeam', id, note) : undefined} />
       <div className="w-px bg-white/10 self-stretch" />
-      <TeamSubs team={awayTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} />
+      <TeamSubs team={awayTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('awayTeam', id, note) : undefined} />
     </div>
   )
 }

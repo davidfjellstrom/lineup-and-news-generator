@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import PlayerCard from './PlayerCard'
 import SubstitutesPanel from './SubstitutesPanel'
 import { groupIntoLines } from '../utils/formations'
@@ -45,7 +45,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter }) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpdateStarter }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -105,6 +105,7 @@ export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter 
 
       if (dragging.current.fromSubs) {
         setGhost((g) => g ? { ...g, x, y } : g)
+        setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
       } else {
         setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
         // Detect if hovering over subs panel
@@ -163,6 +164,13 @@ export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter 
       window.removeEventListener('mouseup', onUp)
     }
   }, [sideOf, onUpdateStarter])
+
+  useImperativeHandle(ref, () => ({
+    async exportPPTX() {
+      const { exportPptx } = await import('../utils/exportPptx')
+      await exportPptx({ match, positions, matchMode })
+    },
+  }), [match, positions, matchMode])
 
   function startSubDrag(player, e) {
     e.preventDefault()
@@ -307,9 +315,12 @@ export default function Pitch({ match, matchMode, onNoteChange, onUpdateStarter 
             awayTeam={awayTeam}
             isDropTarget={hoverSubs}
             onSubDragStart={startSubDrag}
+            onNoteChange={onNoteChange}
           />
         </div>
       </div>
     </div>
   )
-}
+})
+
+export default Pitch
