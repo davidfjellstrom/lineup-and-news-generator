@@ -11,7 +11,7 @@ const Silhouette = ({ size }) => (
   </svg>
 )
 
-export default function PlayerCard({ player, compact = false, onNoteChange }) {
+export default function PlayerCard({ player, compact = false, onNoteChange, isTop5 = false }) {
   const photoSize = compact ? 38 : 52
   const badgeSize = compact ? 16 : 20
   const fontSize = {
@@ -19,6 +19,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
     last: compact ? 9 : 11,
     club: compact ? 7 : 8,
     note: 9,
+    stats: compact ? 7 : 8,
   }
   const notesRef = useRef(null)
 
@@ -122,6 +123,41 @@ export default function PlayerCard({ player, compact = false, onNoteChange }) {
             style={{ fontSize: fontSize.club }}
           >
             {player.clubName}
+          </div>
+        )}
+
+        {/* Stats: position · age · height · foot */}
+        {(player.positionLabel || player.age || player.height || player.foot) && (
+          <div
+            className="text-center truncate"
+            style={{ fontSize: fontSize.stats, color: 'rgba(147,197,253,0.85)', marginTop: 1 }}
+          >
+            {[
+              player.positionLabel,
+              player.age ? `${player.age}å` : null,
+              compact ? null : (player.height ? `${player.height}` : null),
+              compact ? null : (player.foot ? `${player.foot}.f` : null),
+            ].filter(Boolean).join(' · ')}
+          </div>
+        )}
+
+        {/* Caps / goals */}
+        {!compact && player.caps > 0 && (
+          <div
+            className="text-center"
+            style={{ fontSize: fontSize.stats, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}
+          >
+            {player.caps}/{player.goals ?? 0}
+          </div>
+        )}
+
+        {/* Market value — only for top 5 */}
+        {!compact && isTop5 && player.marketValue && (
+          <div
+            className="text-center font-semibold"
+            style={{ fontSize: fontSize.stats, color: '#4ade80', marginTop: 1 }}
+          >
+            €{player.marketValue}M
           </div>
         )}
       </div>

@@ -185,6 +185,18 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
     setPositions((prev) => ({ ...prev, [player.id]: { x, y } }))
   }
 
+  function top5Ids(players) {
+    return new Set(
+      [...players]
+        .filter((p) => p.marketValue)
+        .sort((a, b) => b.marketValue - a.marketValue)
+        .slice(0, 5)
+        .map((p) => p.id)
+    )
+  }
+  const homeTop5 = top5Ids(homeTeam.players)
+  const awayTop5 = top5Ids(awayTeam.players)
+
   const allStarters = [...homeStarters, ...awayStarters]
 
   return (
@@ -206,8 +218,11 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
                 {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              Coach: <span className="text-gray-300">{homeTeam.coach}</span>
+            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+              <span className="text-gray-300">{homeTeam.coach}</span>
+              {homeTeam.fifaRanking && <span>#{homeTeam.fifaRanking}</span>}
+              {homeTeam.avgAge && <span>{String(homeTeam.avgAge).replace('.', ',')}å</span>}
+              {homeTeam.squadValue && <span>€{homeTeam.squadValue}M</span>}
             </div>
           </div>
           <div className="text-center flex flex-col items-center gap-1">
@@ -237,8 +252,11 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
               <span>{awayTeam.name}</span>
               <span>{awayTeam.flag}</span>
             </div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              Coach: <span className="text-gray-300">{awayTeam.coach}</span>
+            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 justify-end">
+              <span className="text-gray-300">{awayTeam.coach}</span>
+              {awayTeam.fifaRanking && <span>#{awayTeam.fifaRanking}</span>}
+              {awayTeam.avgAge && <span>{String(awayTeam.avgAge).replace('.', ',')}å</span>}
+              {awayTeam.squadValue && <span>€{awayTeam.squadValue}M</span>}
             </div>
           </div>
         </div>
@@ -300,6 +318,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
                 <PlayerCard
                   player={player}
                   compact={false}
+                  isTop5={homeTop5.has(player.id) || awayTop5.has(player.id)}
                   onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
                 />
               </div>
@@ -330,6 +349,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             isDropTarget={hoverSubs}
             onSubDragStart={startSubDrag}
             onNoteChange={onNoteChange}
+            homeTop5={homeTop5}
+            awayTop5={awayTop5}
           />
         </div>
       </div>

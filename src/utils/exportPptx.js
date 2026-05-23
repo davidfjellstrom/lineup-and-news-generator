@@ -60,6 +60,17 @@ export async function exportPptx({ match, positions, matchMode }) {
   const homeSubs      = homeTeam.players.filter((p) => !p.isStarter)
   const awaySubs      = awayTeam.players.filter((p) => !p.isStarter)
 
+  // Compute top 5 most valuable per team
+  function top5Set(players) {
+    return new Set(
+      [...players].filter((p) => p.marketValue)
+        .sort((a, b) => b.marketValue - a.marketValue)
+        .slice(0, 5).map((p) => p.id)
+    )
+  }
+  const homeTop5 = top5Set(homeTeam.players)
+  const awayTop5 = top5Set(awayTeam.players)
+
   // Pre-fetch all starter photos via proxy (concurrent)
   const photoCache = {}
   await Promise.all(
@@ -84,8 +95,14 @@ export async function exportPptx({ match, positions, matchMode }) {
     ],
     { x: 0.2, y: 0.06, w: 5, h: 0.32 }
   )
-  slide.addText(`Coach: ${homeTeam.coach || '—'}`, {
-    x: 0.2, y: 0.40, w: 5, h: 0.24, fontSize: 9.5, color: '9CA3AF',
+  const homeInfo = [
+    homeTeam.coach || '—',
+    homeTeam.fifaRanking ? `#${homeTeam.fifaRanking}` : null,
+    homeTeam.avgAge ? `${String(homeTeam.avgAge).replace('.', ',')}å` : null,
+    homeTeam.squadValue ? `€${homeTeam.squadValue}M` : null,
+  ].filter(Boolean).join('  ·  ')
+  slide.addText(homeInfo, {
+    x: 0.2, y: 0.40, w: 5.5, h: 0.24, fontSize: 9.5, color: '9CA3AF',
   })
 
   // Away team (right-aligned)
@@ -96,8 +113,14 @@ export async function exportPptx({ match, positions, matchMode }) {
     ],
     { x: SW - 5.2, y: 0.06, w: 5, h: 0.32, align: 'right' }
   )
-  slide.addText(`Coach: ${awayTeam.coach || '—'}`, {
-    x: SW - 5.2, y: 0.40, w: 5, h: 0.24, fontSize: 9.5, color: '9CA3AF', align: 'right',
+  const awayInfo = [
+    awayTeam.coach || '—',
+    awayTeam.fifaRanking ? `#${awayTeam.fifaRanking}` : null,
+    awayTeam.avgAge ? `${String(awayTeam.avgAge).replace('.', ',')}å` : null,
+    awayTeam.squadValue ? `€${awayTeam.squadValue}M` : null,
+  ].filter(Boolean).join('  ·  ')
+  slide.addText(awayInfo, {
+    x: SW - 5.7, y: 0.40, w: 5.5, h: 0.24, fontSize: 9.5, color: '9CA3AF', align: 'right',
   })
 
   // Referee + mode badge (centre)
@@ -230,6 +253,41 @@ export async function exportPptx({ match, positions, matchMode }) {
       fontSize: 10, bold: true, color: 'FFFFFF', align: 'center',
     })
     textY += 0.19
+
+    // Stats line: positionLabel · age · height · foot
+    const statsLine = [
+      player.positionLabel,
+      player.age ? `${player.age}å` : null,
+      player.height ? `${player.height}` : null,
+      player.foot ? `${player.foot}.f` : null,
+    ].filter(Boolean).join(' · ')
+    if (statsLine) {
+      slide.addText(statsLine, {
+        x: cx - CARD_W / 2, y: textY, w: CARD_W, h: 0.16,
+        fontSize: 7, color: '93C5FD', align: 'center',
+      })
+      textY += 0.15
+    }
+
+    // Caps / goals
+    if (player.caps > 0) {
+      slide.addText(`${player.caps}/${player.goals ?? 0}`, {
+        x: cx - CARD_W / 2, y: textY, w: CARD_W, h: 0.14,
+        fontSize: 6.5, color: '9CA3AF', align: 'center',
+      })
+      textY += 0.13
+    }
+
+    // Market value (top 5 only)
+    const isTop5 = homeTop5.has(player.id) || awayTop5.has(player.id)
+    if (isTop5 && player.marketValue) {
+      slide.addText(`€${player.marketValue}M`, {
+        x: cx - CARD_W / 2, y: textY, w: CARD_W, h: 0.15,
+        fontSize: 7, bold: true, color: '4ADE80', align: 'center',
+      })
+      textY += 0.14
+    }
+
     if (player.notes) {
       slide.addText(player.notes, {
         x: cx - CARD_W / 2, y: textY, w: CARD_W, h: 0.22,

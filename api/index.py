@@ -274,7 +274,14 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
 - number: official jersey number as registered with FIFA (integer)
 - firstName: first name in UPPERCASE
 - lastName: last name / surname in UPPERCASE
-- position: one of GK, DEF, MID, FWD
+- position: one of GK, DEF, MID, FWD  (used for formation grouping)
+- positionLabel: specific position for display, e.g. "GK", "CB", "LB", "RB", "LWB", "RWB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "SS", "CF", "ST"
+- age: current age in years (integer)
+- height: height in cm (integer, e.g. 189)
+- foot: preferred foot in Swedish — "Hö" (right), "Vä" (left), or "Båda" (both)
+- caps: number of official senior international appearances for this national team (integer, 0 if debut/unknown)
+- goals: number of senior international goals for this national team (integer, 0 if none)
+- marketValue: market value in millions EUR from Transfermarkt (number e.g. 65.0, or null if not found)
 - clubName: current club name in English (e.g. "Arsenal", "Bayern Munich", "Real Madrid")
 - clubCountry: lowercase country where the CLUB plays (not the national team), e.g. "england", "germany", "spain", "italy", "france", "sweden", "portugal", "netherlands", "turkey", "saudi-arabia"
 - clubSlug: club's slug on football-logos.cc — lowercase with hyphens, no accents. Examples: "arsenal", "fc-bayern-munchen", "atletico-madrid", "aik", "mjallby-aif", "al-nassr". Derive it from the club's native name if not English (e.g. Bayern Munich → "fc-bayern-munchen")"""
@@ -282,6 +289,9 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
     json_shape = f"""Return ONLY a valid JSON object with these exact keys:
 - flag: the flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
 - coach: head coach full name in UPPERCASE
+- fifaRanking: current FIFA world ranking (integer, e.g. 38)
+- avgAge: average age of all squad members listed (number rounded to 1 decimal, e.g. 27.4)
+- squadValue: total squad market value in millions EUR from Transfermarkt (number, e.g. 435)
 - source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
 - starters: array of exactly 11 starting players
 - substitutes: array of 7–12 squad players not in the starting XI
@@ -300,7 +310,9 @@ Find the REAL officially assigned jersey numbers — do not invent sequential nu
 {json_shape}"""
     else:
         # pre-match (default)
-        return f"""Search FIFA.com first, then Transfermarkt or official football federation sites, for {team}'s official World Cup 2026 squad registration (World Cup 2026 squads are now registered — always use the official FIFA 2026 data).
+        return f"""Search FIFA.com first, then Transfermarkt for {team}'s official World Cup 2026 squad registration (squads are now registered — always use the official FIFA 2026 data).
+
+Specifically search Transfermarkt's {team} national team page for: ages, heights, preferred foot, market values, international caps and goals per player, as well as the team's total squad value, average age, and FIFA world ranking.
 
 Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
 

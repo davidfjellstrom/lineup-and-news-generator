@@ -2,9 +2,10 @@ import { useState, useRef } from 'react'
 import Pitch from './components/Pitch'
 import TeamSetup from './components/TeamSetup'
 import NewsFeed from './components/NewsFeed'
+const emptyTeam = { name: '', flag: '', formation: '4-3-3', coach: '', players: [], fifaRanking: null, avgAge: null, squadValue: null }
 const emptyMatch = {
-  homeTeam: { name: '', flag: '', formation: '4-3-3', coach: '', players: [] },
-  awayTeam: { name: '', flag: '', formation: '4-3-3', coach: '', players: [] },
+  homeTeam: { ...emptyTeam },
+  awayTeam: { ...emptyTeam },
   referee: '',
 }
 
