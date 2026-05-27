@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Pitch from './components/Pitch'
 import TeamSetup from './components/TeamSetup'
 import NewsFeed from './components/NewsFeed'
@@ -9,13 +9,28 @@ const emptyMatch = {
   referee: '',
 }
 
+const STORAGE_KEY = 'wc2026-match'
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const [match, setMatch] = useState(emptyMatch)
+  const [match, setMatch] = useState(() => loadSaved() || emptyMatch)
   const [view, setView] = useState('setup') // 'setup' | 'pitch' | 'news'
   const [exporting, setExporting] = useState(false)
   const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
   const pitchRef = useRef(null)
   const [exportingPptx, setExportingPptx] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(match))
+  }, [match])
 
   function updatePlayerStarter(teamKey, playerId, isStarter) {
     setMatch((m) => ({
