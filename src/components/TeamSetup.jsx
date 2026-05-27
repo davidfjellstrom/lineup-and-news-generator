@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FORMATIONS, getEmptyStartersForFormation } from '../utils/formations'
 import { WC2026_TEAMS } from '../data/wc2026Teams'
 
@@ -155,7 +155,7 @@ function PlayerRow({ player, side, updatePlayer, deletePlayer }) {
   )
 }
 
-function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect }) {
+function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId }) {
   const label = side === 'homeTeam' ? 'Home Team' : 'Away Team'
   const starters = team.players.filter((p) => p.isStarter)
   const subs = team.players.filter((p) => !p.isStarter)
@@ -168,6 +168,20 @@ function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect }) 
   const [fixturesLoading, setFixturesLoading] = useState(false)
   const [fixturesError, setFixturesError] = useState(null)
   const [selectedFixture, setSelectedFixture] = useState(null)
+
+  // Auto-load and select a fixture when the other team's fixture is chosen
+  const autoSelectFixtureIdRef = useRef(null)
+  useEffect(() => {
+    if (!autoSelectFixtureId || !team.name.trim()) return
+    autoSelectFixtureIdRef.current = autoSelectFixtureId
+    loadFixtures()
+  }, [autoSelectFixtureId, team.name])
+
+  useEffect(() => {
+    if (!autoSelectFixtureIdRef.current || !fixtures) return
+    const match = fixtures.find((f) => f.fixtureId === autoSelectFixtureIdRef.current)
+    if (match) setSelectedFixture(match)
+  }, [fixtures])
 
   async function loadFixtures() {
     if (!team.name.trim()) return
@@ -625,28 +639,31 @@ function findTeamByName(name) {
 }
 
 export default function TeamSetup({ match, setMatch, matchMode, onViewLineup }) {
+  const [homeAutoFixtureId, setHomeAutoFixtureId] = useState(null)
+  const [awayAutoFixtureId, setAwayAutoFixtureId] = useState(null)
+
   function handleFixtureSelect(side, fixture) {
     const otherSide = side === 'homeTeam' ? 'awayTeam' : 'homeTeam'
     const myName = match[side].name.toUpperCase()
     const opponentName = fixture.home.toUpperCase() === myName ? fixture.away : fixture.home
     const found = findTeamByName(opponentName)
-    if (!found) return
-    setMatch((m) => ({
-      ...m,
-      [otherSide]: {
-        ...m[otherSide],
-        name: found.name.toUpperCase(),
-        flag: found.flag,
-      },
-    }))
+    if (found) {
+      setMatch((m) => ({
+        ...m,
+        [otherSide]: { ...m[otherSide], name: found.name.toUpperCase(), flag: found.flag },
+      }))
+    }
+    // Auto-select the same fixture on the other panel
+    if (otherSide === 'awayTeam') setAwayAutoFixtureId(fixture.fixtureId)
+    else setHomeAutoFixtureId(fixture.fixtureId)
   }
 
   return (
     <div className="px-4 py-6 max-w-screen-xl mx-auto">
       {/* Teams */}
       <div className="flex gap-4 flex-col xl:flex-row">
-        <TeamPanel side="homeTeam" team={match.homeTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('homeTeam', f)} />
-        <TeamPanel side="awayTeam" team={match.awayTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('awayTeam', f)} />
+        <TeamPanel side="homeTeam" team={match.homeTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('homeTeam', f)} autoSelectFixtureId={homeAutoFixtureId} />
+        <TeamPanel side="awayTeam" team={match.awayTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('awayTeam', f)} autoSelectFixtureId={awayAutoFixtureId} />
       </div>
 
       {/* Referee + CTA */}
