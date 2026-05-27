@@ -167,7 +167,7 @@ def _search_player_photo_af(first_name: str, last_name: str) -> str:
     if not query:
         return ""
     try:
-        for season in (2025, 2024, 2026):
+        for season in (2025, 2026):
             resp = _af_get("players", {"search": query, "season": season})
             players_list = resp.get("response", [])
             if players_list:
@@ -367,22 +367,26 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
 No markdown fences, no explanation — pure JSON object."""
 
     if mode == "match":
-        return f"""Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
+        return f"""Today is June 2026. Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
 
 Search UEFA.com, FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
 
 Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
 
+For each player's clubName: verify their CURRENT club as of June 2026 — players may have transferred since last season.
+
 {json_shape}"""
     else:
         # pre-match (default)
-        return f"""Search FIFA.com first, then Transfermarkt for {team}'s official World Cup 2026 squad registration (squads are now registered — always use the official FIFA 2026 data).
+        return f"""Today is June 2026. You must find accurate, up-to-date information — do not rely on training data or cached knowledge.
 
-Specifically search Transfermarkt's {team} national team page for: ages, heights, preferred foot, market values, international caps and goals per player, as well as the team's total squad value, average age, and FIFA world ranking.
+STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squad registration. This is the authoritative source for jersey numbers and selected players.
 
-Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
+STEP 2 — Player stats: Search Transfermarkt's {team} national team page (transfermarkt.com) for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
 
-The starters array should reflect the most likely XI based on recent matches and current form.
+STEP 3 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026". Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier. If a player's current club is unclear, search explicitly before filling in clubName.
+
+STEP 4 — Likely XI: Based on recent {team} matches and current squad fitness, determine the most probable starting eleven.
 
 {json_shape}"""
 
