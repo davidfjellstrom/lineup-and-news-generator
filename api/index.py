@@ -67,8 +67,8 @@ _SLUG_STRIP_SUFFIXES = ["-fc", "-afc", "-ac", "-united", "-city", "-hotspur", "-
 
 # In-memory cache: country → list of known slugs (populated on first miss per country)
 _country_slug_cache: dict = {}
-# In-memory cache: player last name → photo URL from API-Football
-_player_photo_cache: dict = {}
+# In-memory cache: team name → {LASTNAME → photo_url} map from API-Football
+_team_photo_cache: dict = {}
 
 
 def _fetch_logo_from_page(country: str, slug: str) -> str:
@@ -156,22 +156,40 @@ def get_club_logo_url(club_country: str, club_slug: str) -> str:
     return ""
 
 
-def _fetch_player_photo_af(last_name: str) -> str:
-    """Search API-Football for a player by last name and return their photo URL."""
-    if not last_name or not os.environ.get("API_FOOTBALL_KEY"):
-        return ""
-    key = last_name.lower()
-    if key in _player_photo_cache:
-        return _player_photo_cache[key]
+def _fetch_team_player_photos(team_name: str) -> dict:
+    """Return {LASTNAME → photo_url} for all squad members of a team in WC 2026.
+
+    Makes 2 API calls: team lookup then squad fetch. Results are cached per team name.
+    Returns an empty dict if the API key is missing or any call fails.
+    """
+    if not os.environ.get("API_FOOTBALL_KEY"):
+        return {}
+    key = team_name.lower()
+    if key in _team_photo_cache:
+        return _team_photo_cache[key]
     try:
-        resp = _af_get("players", {"search": last_name})
-        players_list = resp.get("response", [])
-        url = players_list[0]["player"]["photo"] if players_list else ""
-        _player_photo_cache[key] = url
-        return url
-    except Exception:
-        _player_photo_cache[key] = ""
-        return ""
+        teams_resp = _af_get("teams", {"name": team_name, "league": 1, "season": 2026})
+        teams = teams_resp.get("response", [])
+        if not teams:
+            _team_photo_cache[key] = {}
+            return {}
+        team_id = teams[0]["team"]["id"]
+
+        squad_resp = _af_get("players", {"team": team_id, "season": 2026})
+        photo_map = {}
+        for entry in squad_resp.get("response", []):
+            p = entry.get("player", {})
+            last = (p.get("lastname") or "").upper()
+            photo = p.get("photo", "")
+            if last and photo:
+                photo_map[last] = photo
+        log.info("[%s] Hittade foton för %d spelare via API-Football", team_name, len(photo_map))
+        _team_photo_cache[key] = photo_map
+        return photo_map
+    except Exception as e:
+        log.info("[%s] Foto-hämtning misslyckades: %s", team_name, e)
+        _team_photo_cache[key] = {}
+        return {}
 
 
 def run_with_search(client: anthropic.Anthropic, user_message: str, max_uses: int = 5, label: str = "") -> str:
@@ -391,9 +409,9 @@ def get_lineup(
 
         with ThreadPoolExecutor(max_workers=12) as ex:
             logo_futures = [ex.submit(get_club_logo_url, *pair) for pair in unique_pairs]
-            photo_futures = [ex.submit(_fetch_player_photo_af, p.get("lastName", "")) for p in all_players] if fetch_photos else []
+            photo_future = ex.submit(_fetch_team_player_photos, team) if fetch_photos else None
             logo_urls = [f.result() for f in logo_futures]
-            photo_urls = [f.result() for f in photo_futures]
+            photo_map = photo_future.result() if photo_future else {}
 
         logo_map = dict(zip(unique_pairs, logo_urls))
 
@@ -405,7 +423,8 @@ def get_lineup(
             else:
                 log.info("  ✗ %s (%s/%s) — inte hittad", p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"))
 
-        for p, photo in zip(all_players, photo_urls):
+        for p in all_players:
+            photo = photo_map.get(p.get("lastName", "").upper(), "")
             if photo:
                 p["photo"] = photo
 
