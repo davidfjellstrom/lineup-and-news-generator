@@ -155,7 +155,7 @@ function PlayerRow({ player, side, updatePlayer, deletePlayer }) {
   )
 }
 
-function TeamPanel({ side, team, match, setMatch, matchMode }) {
+function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect }) {
   const label = side === 'homeTeam' ? 'Home Team' : 'Away Team'
   const starters = team.players.filter((p) => p.isStarter)
   const subs = team.players.filter((p) => !p.isStarter)
@@ -460,7 +460,7 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
                   return (
                     <button
                       key={f.fixtureId}
-                      onClick={() => setSelectedFixture(f)}
+                      onClick={() => { setSelectedFixture(f); onFixtureSelect?.(f) }}
                       className="w-full text-left rounded px-2 py-1.5 text-xs transition-colors"
                       style={{
                         background: isSelected ? 'rgba(22,163,74,0.3)' : 'rgba(255,255,255,0.05)',
@@ -600,12 +600,28 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
 }
 
 export default function TeamSetup({ match, setMatch, matchMode, onViewLineup }) {
+  function handleFixtureSelect(side, fixture) {
+    const otherSide = side === 'homeTeam' ? 'awayTeam' : 'homeTeam'
+    const myName = match[side].name.toUpperCase()
+    const opponentName = fixture.home.toUpperCase() === myName ? fixture.away : fixture.home
+    const found = WC2026_TEAMS.find((t) => t.name.toUpperCase() === opponentName.toUpperCase())
+    if (!found) return
+    setMatch((m) => ({
+      ...m,
+      [otherSide]: {
+        ...m[otherSide],
+        name: found.name.toUpperCase(),
+        flag: found.flag,
+      },
+    }))
+  }
+
   return (
     <div className="px-4 py-6 max-w-screen-xl mx-auto">
       {/* Teams */}
       <div className="flex gap-4 flex-col xl:flex-row">
-        <TeamPanel side="homeTeam" team={match.homeTeam} match={match} setMatch={setMatch} matchMode={matchMode} />
-        <TeamPanel side="awayTeam" team={match.awayTeam} match={match} setMatch={setMatch} matchMode={matchMode} />
+        <TeamPanel side="homeTeam" team={match.homeTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('homeTeam', f)} />
+        <TeamPanel side="awayTeam" team={match.awayTeam} match={match} setMatch={setMatch} matchMode={matchMode} onFixtureSelect={(f) => handleFixtureSelect('awayTeam', f)} />
       </div>
 
       {/* Referee + CTA */}
