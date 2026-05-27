@@ -161,6 +161,22 @@ def get_club_logo_url(club_country: str, club_slug: str) -> str:
     return ""
 
 
+def _search_player_photo_af(first_name: str, last_name: str) -> str:
+    """Fallback: search API-Football by name for a single player's photo URL."""
+    query = f"{first_name} {last_name}".strip()
+    if not query:
+        return ""
+    try:
+        for season in (2025, 2024, 2026):
+            resp = _af_get("players", {"search": query, "season": season})
+            players_list = resp.get("response", [])
+            if players_list:
+                return players_list[0]["player"].get("photo", "")
+        return ""
+    except Exception:
+        return ""
+
+
 def _fetch_team_player_photos(team_name: str) -> dict:
     """Return {LASTNAME → photo_url} for all squad members of a team in WC 2026.
 
@@ -435,10 +451,26 @@ def get_lineup(
             else:
                 log.info("  ✗ %s (%s/%s) — inte hittad", p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"))
 
+        # Primary: match from team squad lookup
+        unmatched = []
         for p in all_players:
             photo = photo_map.get(_ascii_upper(p.get("lastName", "")), "")
             if photo:
                 p["photo"] = photo
+            else:
+                unmatched.append(p)
+
+        # Fallback: individual name search for players not in the team squad
+        if fetch_photos and unmatched:
+            log.info("[%s] Fallback-sökning för %d osparkade spelare…", team, len(unmatched))
+            with ThreadPoolExecutor(max_workers=8) as ex:
+                fallback_photos = list(ex.map(
+                    lambda p: _search_player_photo_af(p.get("firstName", ""), p.get("lastName", "")),
+                    unmatched,
+                ))
+            for p, photo in zip(unmatched, fallback_photos):
+                if photo:
+                    p["photo"] = photo
 
         return data
     except json.JSONDecodeError:
