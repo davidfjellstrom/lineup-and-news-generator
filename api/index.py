@@ -2,6 +2,7 @@ import os
 import json
 import re
 import logging
+import unicodedata
 import urllib.request
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
@@ -67,6 +68,10 @@ _SLUG_STRIP_SUFFIXES = ["-fc", "-afc", "-ac", "-united", "-city", "-hotspur", "-
 
 # In-memory cache: country → list of known slugs (populated on first miss per country)
 _country_slug_cache: dict = {}
+def _ascii_upper(s: str) -> str:
+    """Strip accents and uppercase — e.g. 'Gyökeres' → 'GYOKERES'."""
+    return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii').upper()
+
 # In-memory cache: team name → {LASTNAME → photo_url} map from API-Football
 _team_photo_cache: dict = {}
 
@@ -175,11 +180,18 @@ def _fetch_team_player_photos(team_name: str) -> dict:
             return {}
         team_id = teams[0]["team"]["id"]
 
-        squad_resp = _af_get("players", {"team": team_id, "season": 2026})
+        # WC 2026 squads may not be indexed yet — try recent seasons as fallback
+        squad_resp = {"response": []}
+        for season in (2026, 2025, 2024):
+            squad_resp = _af_get("players", {"team": team_id, "season": season})
+            if squad_resp.get("response"):
+                log.info("[%s] Hittade spelartrupp i API-Football säsong %d", team_name, season)
+                break
+
         photo_map = {}
         for entry in squad_resp.get("response", []):
             p = entry.get("player", {})
-            last = (p.get("lastname") or "").upper()
+            last = _ascii_upper(p.get("lastname") or "")
             photo = p.get("photo", "")
             if last and photo:
                 photo_map[last] = photo
@@ -424,7 +436,7 @@ def get_lineup(
                 log.info("  ✗ %s (%s/%s) — inte hittad", p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"))
 
         for p in all_players:
-            photo = photo_map.get(p.get("lastName", "").upper(), "")
+            photo = photo_map.get(_ascii_upper(p.get("lastName", "")), "")
             if photo:
                 p["photo"] = photo
 
