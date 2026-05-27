@@ -67,6 +67,8 @@ _SLUG_STRIP_SUFFIXES = ["-fc", "-afc", "-ac", "-united", "-city", "-hotspur", "-
 
 # In-memory cache: country → list of known slugs (populated on first miss per country)
 _country_slug_cache: dict = {}
+# In-memory cache: player last name → photo URL from API-Football
+_player_photo_cache: dict = {}
 
 
 def _fetch_logo_from_page(country: str, slug: str) -> str:
@@ -152,6 +154,24 @@ def get_club_logo_url(club_country: str, club_slug: str) -> str:
             pass
 
     return ""
+
+
+def _fetch_player_photo_af(last_name: str) -> str:
+    """Search API-Football for a player by last name and return their photo URL."""
+    if not last_name or not os.environ.get("API_FOOTBALL_KEY"):
+        return ""
+    key = last_name.lower()
+    if key in _player_photo_cache:
+        return _player_photo_cache[key]
+    try:
+        resp = _af_get("players", {"search": last_name})
+        players_list = resp.get("response", [])
+        url = players_list[0]["player"]["photo"] if players_list else ""
+        _player_photo_cache[key] = url
+        return url
+    except Exception:
+        _player_photo_cache[key] = ""
+        return ""
 
 
 def run_with_search(client: anthropic.Anthropic, user_message: str, max_uses: int = 5, label: str = "") -> str:
@@ -365,10 +385,17 @@ def get_lineup(
 
         unique_pairs = list({(p.get("clubCountry", ""), p.get("clubSlug", ""))
                              for p in all_players if p.get("clubSlug")})
-        log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
-        with ThreadPoolExecutor(max_workers=10) as ex:
-            urls = list(ex.map(lambda pair: get_club_logo_url(*pair), unique_pairs))
-        logo_map = dict(zip(unique_pairs, urls))
+        fetch_photos = bool(os.environ.get("API_FOOTBALL_KEY"))
+        log.info("[%s] Skrapar logotyper för %d klubbar%s…", team, len(unique_pairs),
+                 f" + bilder för {len(all_players)} spelare" if fetch_photos else "")
+
+        with ThreadPoolExecutor(max_workers=12) as ex:
+            logo_futures = [ex.submit(get_club_logo_url, *pair) for pair in unique_pairs]
+            photo_futures = [ex.submit(_fetch_player_photo_af, p.get("lastName", "")) for p in all_players] if fetch_photos else []
+            logo_urls = [f.result() for f in logo_futures]
+            photo_urls = [f.result() for f in photo_futures]
+
+        logo_map = dict(zip(unique_pairs, logo_urls))
 
         for p in all_players:
             key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
@@ -377,6 +404,10 @@ def get_lineup(
                 log.info("  ✓ %s → …%s", p.get("clubName"), p["clubLogoUrl"][-35:])
             else:
                 log.info("  ✗ %s (%s/%s) — inte hittad", p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"))
+
+        for p, photo in zip(all_players, photo_urls):
+            if photo:
+                p["photo"] = photo
 
         return data
     except json.JSONDecodeError:
@@ -439,13 +470,14 @@ def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
             detail="Lineup not released yet — try again closer to kickoff (~60 min before)."
         )
 
-    # Build full-name lookup: player_id → {firstname, lastname}
+    # Build full-name + photo lookup: player_id → {firstname, lastname, photo}
     full_names: dict = {}
     for entry in players_resp.get("response", []):
         p = entry.get("player", {})
         full_names[p["id"]] = {
             "firstName": (p.get("firstname") or "").upper(),
             "lastName": (p.get("lastname") or p.get("name", "").split()[-1]).upper(),
+            "photo": p.get("photo", ""),
         }
 
     # Find the team we want (home or away)
@@ -473,7 +505,7 @@ def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
             "firstName": names.get("firstName") or first_fb.upper(),
             "lastName": names.get("lastName") or last_fb.upper(),
             "position": _map_position(p.get("pos", "")),
-            "photo": "",
+            "photo": names.get("photo", ""),
             "clubLogo": "",
             "clubName": "",
             "notes": "",

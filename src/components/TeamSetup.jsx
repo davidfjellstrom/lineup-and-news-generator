@@ -228,7 +228,7 @@ function TeamPanel({ side, team, match, setMatch, matchMode }) {
           lastName: (p.lastName ?? '').toUpperCase(),
           position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
           positionLabel: p.positionLabel ?? '',
-          photo: '',
+          photo: p.photo ?? '',
           clubLogo: p.clubLogoUrl ?? '',
           clubName: p.clubName ?? '',
           notes: '',
