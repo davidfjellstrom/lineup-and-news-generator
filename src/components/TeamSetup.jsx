@@ -599,12 +599,37 @@ function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect }) 
   )
 }
 
+// API-Football sometimes uses different names than our team list
+const AF_NAME_ALIASES = {
+  'korea republic': 'South Korea',
+  'south korea': 'South Korea',
+  "cote d'ivoire": 'Ivory Coast',
+  'ivory coast': 'Ivory Coast',
+  'turkey': 'Türkiye',
+  'turkiye': 'Türkiye',
+  'usa': 'United States',
+  'united states': 'United States',
+  'bosnia': 'Bosnia and Herzegovina',
+  'dr congo': 'DR Congo',
+  'congo dr': 'DR Congo',
+}
+
+function findTeamByName(name) {
+  const lower = name.toLowerCase()
+  const canonical = AF_NAME_ALIASES[lower] || name
+  return (
+    WC2026_TEAMS.find((t) => t.name.toUpperCase() === canonical.toUpperCase()) ||
+    WC2026_TEAMS.find((t) => t.name.toUpperCase().includes(lower.toUpperCase()) ||
+                              lower.toUpperCase().includes(t.name.toUpperCase()))
+  )
+}
+
 export default function TeamSetup({ match, setMatch, matchMode, onViewLineup }) {
   function handleFixtureSelect(side, fixture) {
     const otherSide = side === 'homeTeam' ? 'awayTeam' : 'homeTeam'
     const myName = match[side].name.toUpperCase()
     const opponentName = fixture.home.toUpperCase() === myName ? fixture.away : fixture.home
-    const found = WC2026_TEAMS.find((t) => t.name.toUpperCase() === opponentName.toUpperCase())
+    const found = findTeamByName(opponentName)
     if (!found) return
     setMatch((m) => ({
       ...m,
