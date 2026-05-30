@@ -1,0 +1,286 @@
+import os
+import json
+import re
+import logging
+from concurrent.futures import ThreadPoolExecutor
+
+import anthropic
+from fastapi import HTTPException
+
+from logos import get_club_logo_url
+from photos import _af_get, _ascii_upper, _fetch_team_player_photos, _search_player_photo_af
+
+log = logging.getLogger("lineup-api")
+
+
+def _map_position(pos: str) -> str:
+    return {"G": "GK", "D": "DEF", "M": "MID", "F": "FWD"}.get(pos, "MID")
+
+
+def run_with_search(
+    client: anthropic.Anthropic,
+    user_message: str,
+    max_uses: int = 5,
+    label: str = "",
+) -> str:
+    """Run a Claude conversation with web_search_20250305, handling the agentic tool-use loop."""
+    tools = [{"type": "web_search_20250305", "name": "web_search", "max_uses": max_uses}]
+    messages = [{"role": "user", "content": user_message}]
+    prefix = f"[{label}] " if label else ""
+
+    for iteration in range(8):
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            tools=tools,
+            messages=messages,
+        )
+
+        for blk in response.content:
+            if getattr(blk, "type", None) == "tool_use":
+                query = getattr(blk, "input", {}).get("query", "?")
+                log.info("%s🔍 Sökning #%d: %s", prefix, iteration + 1, query)
+            elif getattr(blk, "type", None) == "text" and blk.text.strip():
+                preview = blk.text.strip()[:120].replace("\n", " ")
+                log.info("%s💬 Svar: %s%s", prefix, preview, "…" if len(blk.text) > 120 else "")
+
+        if response.stop_reason == "end_turn":
+            break
+
+        if response.stop_reason == "tool_use":
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = [
+                {"type": "tool_result", "tool_use_id": blk.id, "content": ""}
+                for blk in response.content
+                if getattr(blk, "type", None) == "tool_use"
+            ]
+            if not tool_results:
+                break
+            messages.append({"role": "user", "content": tool_results})
+        else:
+            break
+
+    return "".join(
+        blk.text for blk in response.content if getattr(blk, "type", None) == "text"
+    )
+
+
+def extract_json(text: str):
+    """Extract and parse the first JSON array from text, falling back to parsing the whole string.
+
+    Raises json.JSONDecodeError if no valid JSON is found.
+    """
+    match = re.search(r"\[[\s\S]*\]", text)
+    if match:
+        return json.loads(match.group())
+    return json.loads(text.strip())
+
+
+def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
+    player_schema = f"""Each player (in both arrays) has:
+- number: official jersey number as registered with FIFA (integer)
+- firstName: first name in UPPERCASE
+- lastName: last name / surname in UPPERCASE
+- position: one of GK, DEF, MID, FWD  (used for formation grouping)
+- positionLabel: specific position for display, e.g. "GK", "CB", "LB", "RB", "LWB", "RWB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "SS", "CF", "ST"
+- age: current age in years (integer)
+- height: height in cm (integer, e.g. 189)
+- foot: preferred foot in Swedish — "Hö" (right), "Vä" (left), or "Båda" (both)
+- caps: number of official senior international appearances for this national team (integer, 0 if debut/unknown)
+- goals: number of senior international goals for this national team (integer, 0 if none)
+- marketValue: market value in millions EUR from Transfermarkt (number e.g. 65.0, or null if not found)
+- clubName: current club name in English (e.g. "Arsenal", "Bayern Munich", "Real Madrid")
+- clubCountry: lowercase country where the CLUB plays (not the national team), e.g. "england", "germany", "spain", "italy", "france", "sweden", "portugal", "netherlands", "turkey", "saudi-arabia"
+- clubSlug: club's slug on football-logos.cc — lowercase with hyphens, no accents. Examples: "arsenal", "fc-bayern-munchen", "atletico-madrid", "aik", "mjallby-aif", "al-nassr". Derive it from the club's native name if not English (e.g. Bayern Munich → "fc-bayern-munchen")"""
+
+    json_shape = f"""Return ONLY a valid JSON object with these exact keys:
+- flag: the flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
+- coach: head coach full name in UPPERCASE
+- fifaRanking: current FIFA world ranking (integer, e.g. 38)
+- avgAge: average age of all squad members listed (number rounded to 1 decimal, e.g. 27.4)
+- squadValue: total squad market value in millions EUR from Transfermarkt (number, e.g. 435)
+- source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
+- starters: array of exactly 11 starting players
+- substitutes: array of 7–12 squad players not in the starting XI
+
+{player_schema}
+
+No markdown fences, no explanation — pure JSON object."""
+
+    if mode == "match":
+        return f"""Today is June 2026. Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
+
+Search UEFA.com, FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
+
+Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
+
+For each player's clubName: verify their CURRENT club as of June 2026 — players may have transferred since last season.
+
+{json_shape}"""
+    else:
+        return f"""Today is June 2026. You must find accurate, up-to-date information — do not rely on training data or cached knowledge.
+
+STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squad registration. This is the authoritative source for jersey numbers and selected players.
+
+STEP 2 — Player stats: Search Transfermarkt's {team} national team page (transfermarkt.com) for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
+
+STEP 3 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026". Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier. If a player's current club is unclear, search explicitly before filling in clubName.
+
+STEP 4 — Likely XI: Based on recent {team} matches and current squad fitness, determine the most probable starting eleven.
+
+{json_shape}"""
+
+
+def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
+    """Fetch confirmed lineup from API-Football for a given fixture."""
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_lineups = ex.submit(_af_get, "fixtures/lineups", {"fixture": fixture_id})
+        f_players = ex.submit(_af_get, "players", {"fixture": fixture_id})
+        lineups_resp = f_lineups.result()
+        players_resp = f_players.result()
+
+    lineups = lineups_resp.get("response", [])
+    if not lineups:
+        raise HTTPException(
+            status_code=404,
+            detail="Lineup not released yet — try again closer to kickoff (~60 min before).",
+        )
+
+    full_names: dict = {}
+    for entry in players_resp.get("response", []):
+        p = entry.get("player", {})
+        full_names[p["id"]] = {
+            "firstName": (p.get("firstname") or "").upper(),
+            "lastName": (p.get("lastname") or p.get("name", "").split()[-1]).upper(),
+            "photo": p.get("photo", ""),
+        }
+
+    team_name_lower = team_name.lower()
+    team_data = next(
+        (t for t in lineups if t["team"]["name"].lower() == team_name_lower),
+        lineups[0],
+    )
+    coach = (team_data.get("coach") or {}).get("name", "").upper()
+
+    def build_player(p_entry, is_starter: bool) -> dict:
+        p = p_entry["player"]
+        pid = p["id"]
+        names = full_names.get(pid, {})
+        fallback_name = p.get("name", "")
+        parts = fallback_name.split(". ", 1)
+        first_fb = parts[0] if len(parts) > 1 else ""
+        last_fb = parts[-1]
+        return {
+            "id": str(pid),
+            "number": p.get("number") or 0,
+            "firstName": names.get("firstName") or first_fb.upper(),
+            "lastName": names.get("lastName") or last_fb.upper(),
+            "position": _map_position(p.get("pos", "")),
+            "photo": names.get("photo", ""),
+            "clubLogo": "",
+            "clubName": "",
+            "notes": "",
+            "isStarter": is_starter,
+            "clubCountry": "",
+            "clubSlug": "",
+        }
+
+    starters = [build_player(p, True) for p in team_data.get("startXI", [])]
+    substitutes = [build_player(p, False) for p in team_data.get("substitutes", [])]
+
+    return {
+        "flag": "",
+        "coach": coach,
+        "source": f"API-Football (fixture #{fixture_id})",
+        "mode": "match",
+        "starters": starters,
+        "substitutes": substitutes,
+    }
+
+
+def fetch_lineup(
+    team: str,
+    formation: str,
+    mode: str,
+    fixture_id: int | None,
+    client: anthropic.Anthropic,
+) -> dict:
+    """Core lineup logic. Called by the /api/lineup endpoint."""
+    if mode == "match" and fixture_id:
+        data = _lineup_from_api_football(fixture_id, team)
+        all_players = data["starters"] + data["substitutes"]
+        unique_pairs = list({
+            (p.get("clubCountry", ""), p.get("clubSlug", ""))
+            for p in all_players if p.get("clubSlug")
+        })
+        if unique_pairs:
+            log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                urls = list(ex.map(lambda pair: get_club_logo_url(*pair), unique_pairs))
+            logo_map = dict(zip(unique_pairs, urls))
+            for p in all_players:
+                key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
+                p["clubLogoUrl"] = logo_map.get(key, "")
+        return data
+
+    prompt = _build_lineup_prompt(team, formation, mode)
+    text = run_with_search(client, prompt, max_uses=5, label=team)
+
+    try:
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        data = json.loads(obj_match.group()) if obj_match else {"players": extract_json(text)}
+    except json.JSONDecodeError:
+        return {"players": [], "raw": text}
+
+    data["mode"] = mode
+    all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
+
+    unique_pairs = list({
+        (p.get("clubCountry", ""), p.get("clubSlug", ""))
+        for p in all_players if p.get("clubSlug")
+    })
+    fetch_photos = bool(os.environ.get("API_FOOTBALL_KEY"))
+    log.info(
+        "[%s] Skrapar logotyper för %d klubbar%s…",
+        team, len(unique_pairs),
+        f" + bilder för {len(all_players)} spelare" if fetch_photos else "",
+    )
+
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        logo_futures = [ex.submit(get_club_logo_url, *pair) for pair in unique_pairs]
+        photo_future = ex.submit(_fetch_team_player_photos, team) if fetch_photos else None
+        logo_urls = [f.result() for f in logo_futures]
+        photo_map = photo_future.result() if photo_future else {}
+
+    logo_map = dict(zip(unique_pairs, logo_urls))
+    for p in all_players:
+        key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
+        p["clubLogoUrl"] = logo_map.get(key, "")
+        if p["clubLogoUrl"]:
+            log.info("  ✓ %s → …%s", p.get("clubName"), p["clubLogoUrl"][-35:])
+        else:
+            log.info(
+                "  ✗ %s (%s/%s) — inte hittad",
+                p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"),
+            )
+
+    unmatched = []
+    for p in all_players:
+        photo = photo_map.get(_ascii_upper(p.get("lastName", "")), "")
+        if photo:
+            p["photo"] = photo
+        else:
+            unmatched.append(p)
+
+    if fetch_photos and unmatched:
+        log.info("[%s] Fallback-sökning för %d osparkade spelare…", team, len(unmatched))
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            fallback_photos = list(ex.map(
+                lambda p: _search_player_photo_af(p.get("firstName", ""), p.get("lastName", "")),
+                unmatched,
+            ))
+        for p, photo in zip(unmatched, fallback_photos):
+            if photo:
+                p["photo"] = photo
+
+    return data

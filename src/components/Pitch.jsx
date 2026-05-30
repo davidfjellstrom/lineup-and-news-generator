@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import PlayerCard from './PlayerCard'
 import SubstitutesPanel from './SubstitutesPanel'
 import { groupIntoLines, FORMATIONS } from '../utils/formations'
+import { useDragAndDrop } from '../hooks/useDragAndDrop'
 
 function PenaltyBox({ side }) {
   const isHome = side === 'home'
@@ -23,7 +24,6 @@ function PenaltyBox({ side }) {
   )
 }
 
-// Percentage bounds keeping players away from the pitch edges and the centre line
 const HOME_X_START = 5
 const HOME_X_END   = 46
 const AWAY_X_START = 54
@@ -71,19 +71,11 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
     return map
   }, [homeTeam.players, awayTeam.players])
 
-  // Positions for starters on the pitch. Preserve manually-dragged positions across swaps.
   const [positions, setPositions] = useState({})
-  const [draggedId, setDraggedId] = useState(null)
-  // Ghost = a substitute being dragged onto the pitch
-  const [ghost, setGhost] = useState(null) // { player, x, y }
-  // Whether a starter is currently being dragged over the subs section
-  const [hoverSubs, setHoverSubs] = useState(false)
 
-  const dragging = useRef(null) // { playerId, fromSubs }
-  const pitchRef = useRef(null)
-  const subsRef = useRef(null)
+  const { draggedId, ghost, hoverSubs, startStarterDrag, startSubDrag, pitchRef, subsRef } =
+    useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
 
-  // Recompute default positions when lineup changes; preserve existing dragged positions.
   useEffect(() => {
     const defaults = computePositions(homeLines, awayLinesDisplay)
     const starterIdSet = new Set([...homeStarters, ...awayStarters].map((p) => p.id))
@@ -96,94 +88,12 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
     })
   }, [starterKey, homeTeam.formation, awayTeam.formation])
 
-  useEffect(() => {
-    function onMove(e) {
-      if (!dragging.current || !pitchRef.current) return
-      const rect = pitchRef.current.getBoundingClientRect()
-      const x = Math.max(1, Math.min(99, ((e.clientX - rect.left) / rect.width) * 100))
-      const y = Math.max(1, Math.min(99, ((e.clientY - rect.top) / rect.height) * 100))
-
-      if (dragging.current.fromSubs) {
-        setGhost((g) => g ? { ...g, x, y } : g)
-        setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
-      } else {
-        setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
-        // Detect if hovering over subs panel
-        const subsRect = subsRef.current?.getBoundingClientRect()
-        setHoverSubs(
-          subsRect
-            ? e.clientX >= subsRect.left && e.clientX <= subsRect.right &&
-              e.clientY >= subsRect.top && e.clientY <= subsRect.bottom
-            : false,
-        )
-      }
-    }
-
-    function onUp(e) {
-      if (!dragging.current) return
-      const { playerId, fromSubs } = dragging.current
-
-      if (fromSubs) {
-        // Sub dragged — was it dropped on the pitch?
-        const pitchRect = pitchRef.current?.getBoundingClientRect()
-        const onPitch = pitchRect &&
-          e.clientX >= pitchRect.left && e.clientX <= pitchRect.right &&
-          e.clientY >= pitchRect.top && e.clientY <= pitchRect.bottom
-        if (onPitch) {
-          onUpdateStarter(sideOf[playerId], playerId, true)
-          // Position is already set in ghost's latest x/y via onMove
-        } else {
-          // Cancelled — remove ghost position
-          setPositions((prev) => {
-            const next = { ...prev }
-            delete next[playerId]
-            return next
-          })
-        }
-        setGhost(null)
-      } else {
-        // Starter dragged — was it dropped on the subs panel?
-        const subsRect = subsRef.current?.getBoundingClientRect()
-        const onSubs = subsRect &&
-          e.clientX >= subsRect.left && e.clientX <= subsRect.right &&
-          e.clientY >= subsRect.top && e.clientY <= subsRect.bottom
-        if (onSubs) {
-          onUpdateStarter(sideOf[playerId], playerId, false)
-        }
-        setHoverSubs(false)
-      }
-
-      dragging.current = null
-      setDraggedId(null)
-    }
-
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-  }, [sideOf, onUpdateStarter])
-
   useImperativeHandle(ref, () => ({
     async exportPPTX() {
       const { exportPptx } = await import('../utils/exportPptx')
       await exportPptx({ match, positions, matchMode })
     },
   }), [match, positions, matchMode])
-
-  function startSubDrag(player, e) {
-    e.preventDefault()
-    const rect = pitchRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const x = Math.max(1, Math.min(99, ((e.clientX - rect.left) / rect.width) * 100))
-    const y = Math.max(1, Math.min(99, ((e.clientY - rect.top) / rect.height) * 100))
-    dragging.current = { playerId: player.id, fromSubs: true }
-    setDraggedId(player.id)
-    setGhost({ player, x, y })
-    // Pre-set position so it's ready if dropped
-    setPositions((prev) => ({ ...prev, [player.id]: { x, y } }))
-  }
 
   function top5Ids(players) {
     return new Set(
@@ -272,7 +182,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             minHeight: 560,
             border: '2px solid rgba(255,255,255,0.15)',
             userSelect: 'none',
-            // Subtle highlight when a sub is being dragged over the pitch
             outline: ghost ? '2px solid rgba(255,255,255,0.25)' : 'none',
           }}
         >
@@ -293,7 +202,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             transform: 'translate(-50%, -50%)',
           }} />
 
-          {/* Starters */}
           {allStarters.map((player) => {
             const pos = positions[player.id]
             if (!pos) return null
@@ -311,8 +219,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
                 onMouseDown={(e) => {
                   if (e.target.contentEditable === 'true') return
                   e.preventDefault()
-                  dragging.current = { playerId: player.id, fromSubs: false }
-                  setDraggedId(player.id)
+                  startStarterDrag(player.id)
                 }}
               >
                 <PlayerCard
@@ -325,7 +232,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             )
           })}
 
-          {/* Ghost: substitute being dragged onto the pitch */}
           {ghost && (
             <div style={{
               position: 'absolute',
@@ -341,7 +247,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
           )}
         </div>
 
-        {/* Substitutes — drop target when dragging a starter */}
         <div ref={subsRef}>
           <SubstitutesPanel
             homeTeam={homeTeam}
