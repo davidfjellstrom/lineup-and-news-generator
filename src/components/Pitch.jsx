@@ -76,6 +76,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
   const { draggedId, ghost, hoverSubs, startStarterDrag, startSubDrag, pitchRef, subsRef } =
     useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
 
+  // When starters change (swap/add/remove): fill in defaults for new players, preserve dragged positions.
   useEffect(() => {
     const defaults = computePositions(homeLines, awayLinesDisplay)
     const starterIdSet = new Set([...homeStarters, ...awayStarters].map((p) => p.id))
@@ -86,8 +87,18 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
       })
       return next
     })
-  }, [starterKey, homeTeam.formation, awayTeam.formation])
+  }, [starterKey])
 
+  // When formation changes: reset all positions to match the new layout.
+  useEffect(() => {
+    if (!homeStarters.length && !awayStarters.length) return
+    const defaults = computePositions(homeLines, awayLinesDisplay)
+    setPositions(
+      Object.fromEntries(
+        [...homeStarters, ...awayStarters].map((p) => [p.id, defaults[p.id] || { x: 50, y: 50 }])
+      )
+    )
+  }, [homeTeam.formation, awayTeam.formation])
   useImperativeHandle(ref, () => ({
     async exportPPTX() {
       const { exportPptx } = await import('../utils/exportPptx')
