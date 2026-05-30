@@ -60,6 +60,18 @@ export default function App() {
     setMatch((m) => ({ ...m, [teamKey]: { ...m[teamKey], formation } }))
   }
 
+  function updatePlayerPhoto(teamKey, playerId, photo) {
+    setMatch((m) => ({
+      ...m,
+      [teamKey]: {
+        ...m[teamKey],
+        players: m[teamKey].players.map((p) =>
+          p.id === playerId ? { ...p, photo } : p
+        ),
+      },
+    }))
+  }
+
   async function exportPPTX() {
     if (!pitchRef.current) return
     setExportingPptx(true)
@@ -203,9 +215,9 @@ export default function App() {
             onViewLineup={() => setView('pitch')}
           />
         )}
-        {view === 'pitch' && (
-          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} />
-        )}
+        <div style={{ display: view === 'pitch' ? undefined : 'none' }}>
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} />
+        </div>
         {view === 'news' && <NewsFeed />}
       </main>
     </div>

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 const Silhouette = ({ size }) => (
   <svg
@@ -11,9 +11,11 @@ const Silhouette = ({ size }) => (
   </svg>
 )
 
-export default function PlayerCard({ player, compact = false, onNoteChange, isTop5 = false }) {
+export default function PlayerCard({ player, compact = false, onNoteChange, onPhotoChange, isTop5 = false }) {
   const photoSize = compact ? 38 : 56
   const badgeSize = compact ? 16 : 22
+  const logoBadgeSize = compact ? 22 : 30
+  const [dragOver, setDragOver] = useState(false)
   const fontSize = {
     first: compact ? 8 : 10,
     last: compact ? 9 : 13,
@@ -22,6 +24,18 @@ export default function PlayerCard({ player, compact = false, onNoteChange, isTo
     stats: compact ? 7 : 10,
   }
   const notesRef = useRef(null)
+
+  function handleDrop(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    if (!onPhotoChange) return
+    const file = e.dataTransfer.files[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => onPhotoChange(ev.target.result)
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     if (notesRef.current && notesRef.current !== document.activeElement) {
@@ -53,16 +67,21 @@ export default function PlayerCard({ player, compact = false, onNoteChange, isTo
           {player.number}
         </div>
 
-        {/* Photo circle */}
+        {/* Photo circle — accepts file drops to set a custom photo */}
         <div
-          className="absolute rounded-full border-2 border-white overflow-hidden flex items-center justify-center"
+          className="absolute rounded-full border-2 overflow-hidden flex items-center justify-center"
           style={{
             width: photoSize,
             height: photoSize,
             top: 4,
             left: 4,
             background: '#6B7280',
+            borderColor: dragOver ? '#4ade80' : 'white',
+            cursor: onPhotoChange ? 'copy' : 'default',
           }}
+          onDragOver={onPhotoChange ? (e) => { e.preventDefault(); setDragOver(true) } : undefined}
+          onDragLeave={onPhotoChange ? () => setDragOver(false) : undefined}
+          onDrop={onPhotoChange ? handleDrop : undefined}
         >
           {player.photo ? (
             <img
@@ -81,8 +100,8 @@ export default function PlayerCard({ player, compact = false, onNoteChange, isTo
           <div
             className="absolute z-10 rounded-full bg-white overflow-hidden flex items-center justify-center shadow-md"
             style={{
-              width: badgeSize,
-              height: badgeSize,
+              width: logoBadgeSize,
+              height: logoBadgeSize,
               bottom: 0,
               right: 0,
             }}
@@ -91,7 +110,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, isTo
               src={player.clubLogo}
               alt={player.clubName}
               className="object-contain"
-              style={{ width: badgeSize * 0.75, height: badgeSize * 0.75 }}
+              style={{ width: logoBadgeSize * 0.8, height: logoBadgeSize * 0.8 }}
               onError={(e) => { e.currentTarget.parentElement.style.display = 'none' }}
             />
           </div>

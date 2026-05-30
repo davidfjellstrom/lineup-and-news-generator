@@ -45,7 +45,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpdateStarter, onFormationChange }, ref) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -238,6 +238,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
                   compact={false}
                   isTop5={homeTop5.has(player.id) || awayTop5.has(player.id)}
                   onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
+                  onPhotoChange={onPhotoChange ? (photo) => onPhotoChange(sideOf[player.id], player.id, photo) : undefined}
                 />
               </div>
             )
@@ -265,6 +266,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onUpda
             isDropTarget={hoverSubs}
             onSubDragStart={startSubDrag}
             onNoteChange={onNoteChange}
+            onPhotoChange={onPhotoChange}
             homeTop5={homeTop5}
             awayTop5={awayTop5}
           />
