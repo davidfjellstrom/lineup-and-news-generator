@@ -24,13 +24,14 @@ export function useDragAndDrop({ onUpdateStarter, sideOf, setPositions }) {
   useEffect(() => {
     function onMove(e) {
       if (!dragging.current || !pitchRef.current) return
+      const { playerId, fromSubs } = dragging.current
       const rect = pitchRef.current.getBoundingClientRect()
       const x = Math.max(1, Math.min(99, ((e.clientX - rect.left) / rect.width) * 100))
       const y = Math.max(1, Math.min(99, ((e.clientY - rect.top) / rect.height) * 100))
 
-      setPositions((prev) => ({ ...prev, [dragging.current.playerId]: { x, y } }))
+      setPositions((prev) => ({ ...prev, [playerId]: { x, y } }))
 
-      if (dragging.current.fromSubs) {
+      if (fromSubs) {
         setGhost((g) => g ? { ...g, x, y } : g)
       } else {
         const subsRect = subsRef.current?.getBoundingClientRect()

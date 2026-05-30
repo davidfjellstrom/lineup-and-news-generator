@@ -65,16 +65,15 @@ def _fetch_team_player_photos(team_name: str) -> dict:
         teams_resp = _af_get("teams", {"name": team_name, "league": 1, "season": 2026})
         teams = teams_resp.get("response", [])
         if not teams:
+            # Retry without league filter — handles name variants or teams not yet registered
+            teams_resp = _af_get("teams", {"name": team_name, "type": "National"})
+            teams = teams_resp.get("response", [])
+        if not teams:
             _team_photo_cache[key] = {}
             return {}
         team_id = teams[0]["team"]["id"]
 
-        squad_resp: dict = {"response": []}
-        for season in (2026, 2025, 2024):
-            squad_resp = _af_get("players", {"team": team_id, "season": season})
-            if squad_resp.get("response"):
-                log.info("[%s] Hittade spelartrupp i API-Football säsong %d", team_name, season)
-                break
+        squad_resp = _af_get("players", {"team": team_id, "season": 2026})
 
         photo_map = {}
         for entry in squad_resp.get("response", []):

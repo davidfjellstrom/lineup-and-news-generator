@@ -101,7 +101,7 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
 - squadValue: total squad market value in millions EUR from Transfermarkt (number, e.g. 435)
 - source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
 - starters: array of exactly 11 starting players
-- substitutes: array of 7–12 squad players not in the starting XI
+- substitutes: array of ALL remaining registered squad members not in the starting XI (typically 12–15 players for a 23–26 man squad — include everyone)
 
 {player_schema}
 
@@ -224,7 +224,7 @@ def fetch_lineup(
         return data
 
     prompt = _build_lineup_prompt(team, formation, mode)
-    text = run_with_search(client, prompt, max_uses=5, label=team)
+    text = run_with_search(client, prompt, max_uses=8, label=team)
 
     try:
         obj_match = re.search(r"\{[\s\S]*\}", text)
