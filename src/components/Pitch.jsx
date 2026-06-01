@@ -4,6 +4,17 @@ import SubstitutesPanel from './SubstitutesPanel'
 import { groupIntoLines, FORMATIONS } from '../utils/formations'
 import { useDragAndDrop } from '../hooks/useDragAndDrop'
 
+const TEAM_COLORS = [
+  { label: 'Blå',    value: '#60a5fa' },
+  { label: 'Röd',    value: '#f87171' },
+  { label: 'Gul',    value: '#fbbf24' },
+  { label: 'Grön',   value: '#4ade80' },
+  { label: 'Orange', value: '#fb923c' },
+  { label: 'Svart',  value: '#1f2937' },
+  { label: 'Vit',    value: '#ffffff' },
+  { label: 'Arg.blå', value: '#74acdf' },
+]
+
 function PenaltyBox({ side }) {
   const isHome = side === 'home'
   const b = '1px solid rgba(255,255,255,0.28)'
@@ -83,6 +94,15 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
     })
   }
 
+  const [homeColor, setHomeColor] = useState(
+    () => localStorage.getItem('wc2026-homeColor') || '#60a5fa'
+  )
+  const [awayColor, setAwayColor] = useState(
+    () => localStorage.getItem('wc2026-awayColor') || '#f87171'
+  )
+  function pickHomeColor(v) { setHomeColor(v); localStorage.setItem('wc2026-homeColor', v) }
+  function pickAwayColor(v) { setAwayColor(v); localStorage.setItem('wc2026-awayColor', v) }
+
   const { draggedId, ghost, hoverSubs, startStarterDrag, startSubDrag, pitchRef, subsRef } =
     useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
 
@@ -148,6 +168,14 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               >
                 {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
+              <select
+                value={homeColor}
+                onChange={(e) => pickHomeColor(e.target.value)}
+                className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
+                style={{ background: '#1f2937', color: homeColor, border: `1px solid ${homeColor}`, outline: 'none' }}
+              >
+                {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
             </div>
             <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
               <span className="text-gray-300">{homeTeam.coach}</span>
@@ -172,6 +200,14 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
+              <select
+                value={awayColor}
+                onChange={(e) => pickAwayColor(e.target.value)}
+                className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
+                style={{ background: '#1f2937', color: awayColor, border: `1px solid ${awayColor}`, outline: 'none' }}
+              >
+                {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
               <select
                 value={awayTeam.formation}
                 onChange={(e) => onFormationChange('awayTeam', e.target.value)}
@@ -247,7 +283,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   player={player}
                   compact={false}
                   isTop5={homeTop5.has(player.id) || awayTop5.has(player.id)}
-                  teamColor={sideOf[player.id] === 'homeTeam' ? '#60a5fa' : '#f87171'}
+                  teamColor={sideOf[player.id] === 'homeTeam' ? homeColor : awayColor}
                   onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
                   onPhotoChange={onPhotoChange ? (photo) => onPhotoChange(sideOf[player.id], player.id, photo) : undefined}
                 />
@@ -280,6 +316,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
             onPhotoChange={onPhotoChange}
             homeTop5={homeTop5}
             awayTop5={awayTop5}
+            homeColor={homeColor}
+            awayColor={awayColor}
           />
         </div>
       </div>
