@@ -108,6 +108,14 @@ export default function App() {
     }
   }
 
+  function newMatch() {
+    if (!window.confirm('Starta en ny match? All nuvarande data rensas.')) return
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem('wc2026-positions')
+    setMatch({ ...emptyMatch, homeTeam: { ...emptyTeam }, awayTeam: { ...emptyTeam } })
+    setView('setup')
+  }
+
   const navBtn = (target, label) => (
     <button
       key={target}
@@ -134,6 +142,13 @@ export default function App() {
           <span className="text-sm font-bold text-white hidden sm:block">
             World Cup 2026 · Lineup Generator
           </span>
+          <button
+            onClick={newMatch}
+            className="text-xs px-2 py-1 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            title="Rensa allt och börja om"
+          >
+            + Ny match
+          </button>
         </div>
 
         <nav className="flex items-center gap-1">
