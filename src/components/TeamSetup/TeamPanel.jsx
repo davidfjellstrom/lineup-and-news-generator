@@ -52,7 +52,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
           position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
           positionLabel: p.positionLabel ?? '',
           photo: p.photo ?? '',
-          clubLogo: p.clubLogoUrl ?? '',
+          clubLogo: p.clubLogo ?? p.clubLogoUrl ?? '',
           clubName: p.clubName ?? '',
           notes: '',
           isStarter,

@@ -9,8 +9,8 @@ from fastapi import HTTPException
 
 log = logging.getLogger("lineup-api")
 
-# Note: cache lives in process memory; on Vercel each cold-start instance resets it.
-_team_photo_cache: dict = {}
+# Process-level cache — resets on Vercel cold start.
+_team_squad_cache: dict = {}
 
 
 def _af_headers() -> dict:
@@ -30,12 +30,22 @@ def _af_get(path: str, params: dict) -> dict:
 
 
 def _ascii_upper(s: str) -> str:
-    """Strip accents and uppercase — e.g. 'Gyökeres' → 'GYOKERES'."""
+    """Strip accents and uppercase — 'Gyökeres' → 'GYOKERES'."""
     return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").upper()
 
 
+def _parse_height(height_str: str) -> int | None:
+    """Convert '178 cm' → 178, return None if unparseable."""
+    if not height_str:
+        return None
+    try:
+        return int(height_str.replace(" cm", "").strip())
+    except ValueError:
+        return None
+
+
 def _search_player_photo_af(first_name: str, last_name: str) -> str:
-    """Fallback: search API-Football by name for a single player's photo URL."""
+    """Fallback: search API-Football by full name for a player's photo URL."""
     query = f"{first_name} {last_name}".strip()
     if not query:
         return ""
@@ -50,42 +60,64 @@ def _search_player_photo_af(first_name: str, last_name: str) -> str:
         return ""
 
 
-def _fetch_team_player_photos(team_name: str) -> dict:
-    """Return {LASTNAME → photo_url} for all squad members of a team in WC 2026.
+def _fetch_team_squad_af(team_name: str) -> dict:
+    """Return {NORMALIZED_LASTNAME: {photo, age, height, clubName, clubLogo}}
+    for all squad members via API-Football.
 
-    Makes 2 API calls: team lookup then squad fetch. Results are cached per team name.
-    Returns an empty dict if the API key is missing or any call fails.
+    API-Football is the primary source for age, height, current club, and photo —
+    all structured data that doesn't require AI interpretation.
+
+    Returns {} if the key is missing or the call fails.
     """
     if not os.environ.get("API_FOOTBALL_KEY"):
         return {}
     key = team_name.lower()
-    if key in _team_photo_cache:
-        return _team_photo_cache[key]
+    if key in _team_squad_cache:
+        return _team_squad_cache[key]
     try:
+        # Step 1: resolve team name → API-Football team ID
         teams_resp = _af_get("teams", {"name": team_name, "league": 1, "season": 2026})
         teams = teams_resp.get("response", [])
         if not teams:
-            # Retry without league filter — handles name variants or teams not yet registered
+            # Fallback: search without league filter
             teams_resp = _af_get("teams", {"name": team_name, "type": "National"})
             teams = teams_resp.get("response", [])
         if not teams:
-            _team_photo_cache[key] = {}
+            _team_squad_cache[key] = {}
             return {}
         team_id = teams[0]["team"]["id"]
 
+        # Step 2: fetch full squad with player data
         squad_resp = _af_get("players", {"team": team_id, "season": 2026})
 
-        photo_map = {}
+        squad_map: dict = {}
         for entry in squad_resp.get("response", []):
             p = entry.get("player", {})
+            stats = entry.get("statistics", [])
+
             last = _ascii_upper(p.get("lastname") or "")
-            photo = p.get("photo", "")
-            if last and photo:
-                photo_map[last] = photo
-        log.info("[%s] Hittade foton för %d spelare via API-Football", team_name, len(photo_map))
-        _team_photo_cache[key] = photo_map
-        return photo_map
+            if not last:
+                continue
+
+            # Current club: prefer a domestic league entry over national team entries
+            club_entry = next(
+                (s for s in stats if s.get("league", {}).get("type") == "League"),
+                stats[0] if stats else {},
+            )
+            team_info = club_entry.get("team", {})
+
+            squad_map[last] = {
+                "photo":    p.get("photo", ""),
+                "age":      p.get("age"),
+                "height":   _parse_height(p.get("height") or ""),
+                "clubName": team_info.get("name", ""),
+                "clubLogo": team_info.get("logo", ""),
+            }
+
+        log.info("[%s] AF squad: %d spelare", team_name, len(squad_map))
+        _team_squad_cache[key] = squad_map
+        return squad_map
     except Exception as e:
-        log.info("[%s] Foto-hämtning misslyckades: %s", team_name, e)
-        _team_photo_cache[key] = {}
+        log.info("[%s] AF squad misslyckades: %s", team_name, e)
+        _team_squad_cache[key] = {}
         return {}
