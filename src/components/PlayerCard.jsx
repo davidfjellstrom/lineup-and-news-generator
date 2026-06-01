@@ -11,7 +11,7 @@ const Silhouette = ({ size }) => (
   </svg>
 )
 
-export default function PlayerCard({ player, compact = false, onNoteChange, onPhotoChange, isTop5 = false }) {
+export default function PlayerCard({ player, compact = false, onNoteChange, onPhotoChange, isTop5 = false, teamColor = '#ffffff' }) {
   const photoSize = compact ? 38 : 56
   const badgeSize = compact ? 16 : 22
   const logoBadgeSize = compact ? 22 : 30
@@ -76,7 +76,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             top: 4,
             left: 4,
             background: '#6B7280',
-            borderColor: dragOver ? '#4ade80' : 'white',
+            borderColor: dragOver ? '#4ade80' : teamColor,
             cursor: onPhotoChange ? 'copy' : 'default',
           }}
           onDragOver={onPhotoChange ? (e) => { e.preventDefault(); setDragOver(true) } : undefined}

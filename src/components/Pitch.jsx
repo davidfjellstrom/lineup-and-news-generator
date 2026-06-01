@@ -71,7 +71,17 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
     return map
   }, [homeTeam.players, awayTeam.players])
 
-  const [positions, setPositions] = useState({})
+  const [positions, setPositionsState] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wc2026-positions') || '{}') } catch { return {} }
+  })
+
+  function setPositions(updater) {
+    setPositionsState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      try { localStorage.setItem('wc2026-positions', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
 
   const { draggedId, ghost, hoverSubs, startStarterDrag, startSubDrag, pitchRef, subsRef } =
     useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
@@ -237,6 +247,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   player={player}
                   compact={false}
                   isTop5={homeTop5.has(player.id) || awayTop5.has(player.id)}
+                  teamColor={sideOf[player.id] === 'homeTeam' ? '#60a5fa' : '#f87171'}
                   onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
                   onPhotoChange={onPhotoChange ? (photo) => onPhotoChange(sideOf[player.id], player.id, photo) : undefined}
                 />

@@ -10,7 +10,7 @@ function groupSubs(team) {
   }))
 }
 
-function TeamSubs({ team, isDropTarget, onSubDragStart, onNoteChange, onPhotoChange, top5Ids }) {
+function TeamSubs({ team, isDropTarget, onSubDragStart, onNoteChange, onPhotoChange, top5Ids, teamColor }) {
   const groups = groupSubs(team)
   const hasAnySub = groups.some((g) => g.players.length > 0)
   if (!hasAnySub) return null
@@ -47,6 +47,7 @@ function TeamSubs({ team, isDropTarget, onSubDragStart, onNoteChange, onPhotoCha
                     player={player}
                     compact
                     isTop5={top5Ids?.has(player.id)}
+                    teamColor={teamColor}
                     onNoteChange={onNoteChange ? (note) => onNoteChange(player.id, note) : undefined}
                     onPhotoChange={onPhotoChange ? (photo) => onPhotoChange(player.id, photo) : undefined}
                   />
@@ -69,9 +70,9 @@ export default function SubstitutesPanel({ homeTeam, awayTeam, isDropTarget, onS
         outline: isDropTarget ? '2px solid rgba(34,197,94,0.5)' : 'none',
       }}
     >
-      <TeamSubs team={homeTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('homeTeam', id, note) : undefined} onPhotoChange={onPhotoChange ? (id, photo) => onPhotoChange('homeTeam', id, photo) : undefined} top5Ids={homeTop5} />
+      <TeamSubs team={homeTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('homeTeam', id, note) : undefined} onPhotoChange={onPhotoChange ? (id, photo) => onPhotoChange('homeTeam', id, photo) : undefined} top5Ids={homeTop5} teamColor="#60a5fa" />
       <div className="w-px bg-white/10 self-stretch" />
-      <TeamSubs team={awayTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('awayTeam', id, note) : undefined} onPhotoChange={onPhotoChange ? (id, photo) => onPhotoChange('awayTeam', id, photo) : undefined} top5Ids={awayTop5} />
+      <TeamSubs team={awayTeam} isDropTarget={isDropTarget} onSubDragStart={onSubDragStart} onNoteChange={onNoteChange ? (id, note) => onNoteChange('awayTeam', id, note) : undefined} onPhotoChange={onPhotoChange ? (id, photo) => onPhotoChange('awayTeam', id, photo) : undefined} top5Ids={awayTop5} teamColor="#f87171" />
     </div>
   )
 }
