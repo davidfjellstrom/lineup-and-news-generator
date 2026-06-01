@@ -62,7 +62,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             fontSize: badgeSize * 0.5,
             top: 0,
             left: 0,
-            border: `2px solid ${teamColor}`,
+            border: `1px solid ${teamColor}`,
           }}
         >
           {player.number}
