@@ -99,19 +99,10 @@ def _fetch_team_squad_af(team_name: str) -> dict:
             if not last:
                 continue
 
-            # Current club: prefer a domestic league entry over national team entries
-            club_entry = next(
-                (s for s in stats if s.get("league", {}).get("type") == "League"),
-                stats[0] if stats else {},
-            )
-            team_info = club_entry.get("team", {})
-
             squad_map[last] = {
-                "photo":    p.get("photo", ""),
-                "age":      p.get("age"),
-                "height":   _parse_height(p.get("height") or ""),
-                "clubName": team_info.get("name", ""),
-                "clubLogo": team_info.get("logo", ""),
+                "photo":  p.get("photo", ""),
+                "age":    p.get("age"),
+                "height": _parse_height(p.get("height") or ""),
             }
 
         log.info("[%s] AF squad: %d spelare", team_name, len(squad_map))

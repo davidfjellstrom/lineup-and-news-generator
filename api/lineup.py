@@ -8,6 +8,7 @@ import anthropic
 from fastapi import HTTPException
 
 from photos import _af_get, _ascii_upper, _fetch_team_squad_af, _search_player_photo_af
+from logos import get_club_logo_url
 
 log = logging.getLogger("lineup-api")
 
@@ -83,7 +84,10 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
 - foot: preferred foot in Swedish — "Hö" (right), "Vä" (left), or "Båda" (both)
 - caps: number of official senior international appearances for this national team (integer, 0 if unknown)
 - goals: number of senior international goals for this national team (integer, 0 if none)
-- marketValue: market value in millions EUR from Transfermarkt (number, or null)"""
+- marketValue: market value in millions EUR from Transfermarkt (number, or null)
+- clubName: current club name in English as of June 2026 (e.g. "Arsenal", "Real Madrid")
+- clubCountry: lowercase country where the club plays, e.g. "england", "spain", "germany", "italy", "france", "sweden", "portugal", "netherlands", "belgium", "turkey", "saudi-arabia"
+- clubSlug: club slug on football-logos.cc — lowercase, hyphens, no accents (e.g. "arsenal", "real-madrid", "fc-barcelona", "aik")"""
 
     json_shape = f"""Return ONLY a valid JSON object with these exact keys:
 - flag: flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
@@ -258,12 +262,32 @@ def fetch_lineup(
     data["mode"] = mode
     all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
 
-    # Apply API-Football structured data (age, height, club, photo) — more reliable than Claude
+    # Scrape club logos in parallel with API-Football squad enrichment
+    unique_pairs = list({
+        (p.get("clubCountry", ""), p.get("clubSlug", ""))
+        for p in all_players if p.get("clubSlug")
+    })
+    log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
+
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        logo_futures  = [ex.submit(get_club_logo_url, *pair) for pair in unique_pairs]
+        squad_future  = ex.submit(_fetch_team_squad_af, team) if fetch_af else None
+        logo_urls     = [f.result() for f in logo_futures]
+        squad_map     = squad_future.result() if squad_future else {}
+
+    logo_map = dict(zip(unique_pairs, logo_urls))
+    for p in all_players:
+        url = logo_map.get((p.get("clubCountry", ""), p.get("clubSlug", "")), "")
+        if url:
+            p["clubLogoUrl"] = url
+
+    # Enrich with API-Football data: age, height, photo (NOT club — AF national team
+    # query only returns national team statistics, not club statistics)
     unmatched = _enrich_players_from_squad(all_players, squad_map)
     log.info("[%s] AF berikning: %d matchade, %d omatchade", team,
              len(all_players) - len(unmatched), len(unmatched))
 
-    # Photo fallback for players not matched in squad map
+    # Photo fallback for players not in squad map
     if fetch_af and unmatched:
         with ThreadPoolExecutor(max_workers=8) as ex:
             fallback_photos = list(ex.map(

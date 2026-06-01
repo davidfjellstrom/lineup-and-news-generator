@@ -16,11 +16,12 @@ class TestBuildLineupPrompt:
         assert "- age:" not in prompt
         assert "- height:" not in prompt
 
-    def test_prematch_does_not_ask_for_club_country(self):
-        # clubCountry/clubSlug were used for football-logos.cc — no longer needed
+    def test_prematch_asks_for_club_info(self):
+        # clubCountry/clubSlug still needed for football-logos.cc logo scraping
         prompt = _build_lineup_prompt("Sweden", "4-3-3", "pre-match")
-        assert "clubCountry" not in prompt
-        assert "clubSlug" not in prompt
+        assert "clubCountry" in prompt
+        assert "clubSlug" in prompt
+        assert "clubName" in prompt
 
     def test_prematch_still_asks_for_foot(self):
         prompt = _build_lineup_prompt("Sweden", "4-3-3", "pre-match")

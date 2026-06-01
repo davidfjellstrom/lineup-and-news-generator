@@ -19,16 +19,13 @@ class TestEnrichPlayersFromSquad:
     def test_enriches_matched_player(self):
         players = [make_player("HAALAND")]
         squad_map = {
-            "HAALAND": {"age": 25, "height": 194, "photo": "http://photo.png",
-                        "clubName": "Man City", "clubLogo": "http://logo.png"}
+            "HAALAND": {"age": 25, "height": 194, "photo": "http://photo.png"}
         }
         unmatched = _enrich_players_from_squad(players, squad_map)
         p = players[0]
         assert p["age"] == 25
         assert p["height"] == 194
         assert p["photo"] == "http://photo.png"
-        assert p["clubName"] == "Man City"
-        assert p["clubLogo"] == "http://logo.png"
         assert unmatched == []
 
     def test_unmatched_player_returned(self):
@@ -51,8 +48,7 @@ class TestEnrichPlayersFromSquad:
     def test_mixed_matched_and_unmatched(self):
         players = [make_player("GYOKERES"), make_player("UNKNOWN")]
         squad_map = {
-            "GYOKERES": {"age": 26, "height": 184, "photo": "p.png",
-                         "clubName": "Sporting", "clubLogo": "l.png"}
+            "GYOKERES": {"age": 26, "height": 184, "photo": "p.png"}
         }
         unmatched = _enrich_players_from_squad(players, squad_map)
         assert players[0]["age"] == 26
@@ -69,8 +65,7 @@ class TestEnrichPlayersFromSquad:
         # Player lastName from Claude may be "GYÖKERES" but squad_map key is "GYOKERES"
         players = [make_player("GYÖKERES")]
         squad_map = {
-            "GYOKERES": {"age": 26, "height": 184, "photo": "p.png",
-                         "clubName": "Sporting", "clubLogo": "l.png"}
+            "GYOKERES": {"age": 26, "height": 184, "photo": "p.png"}
         }
         # _enrich_players_from_squad normalizes via _ascii_upper before lookup
         unmatched = _enrich_players_from_squad(players, squad_map)
