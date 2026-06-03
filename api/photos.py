@@ -5,8 +5,6 @@ import urllib.request
 import urllib.parse
 import logging
 
-from fastapi import HTTPException
-
 log = logging.getLogger("lineup-api")
 
 # Note: cache lives in process memory; on Vercel each cold-start instance resets it.
@@ -16,7 +14,7 @@ _team_photo_cache: dict = {}
 def _af_headers() -> dict:
     key = os.environ.get("API_FOOTBALL_KEY")
     if not key:
-        raise HTTPException(status_code=500, detail="API_FOOTBALL_KEY not configured")
+        raise RuntimeError("API_FOOTBALL_KEY not configured")
     return {"x-apisports-key": key}
 
 

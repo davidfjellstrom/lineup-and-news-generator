@@ -27,9 +27,14 @@ export default function App() {
   const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
   const pitchRef = useRef(null)
   const [exportingPptx, setExportingPptx] = useState(false)
+  const [exportError, setExportError] = useState(null)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(match))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(match))
+    } catch {
+      // localStorage kan vara otillgänglig (t.ex. iOS privat läge med full kvot)
+    }
   }, [match])
 
   function updatePlayerStarter(teamKey, playerId, isStarter) {
@@ -75,10 +80,12 @@ export default function App() {
   async function exportPPTX() {
     if (!pitchRef.current) return
     setExportingPptx(true)
+    setExportError(null)
     try {
       await pitchRef.current.exportPPTX()
     } catch (err) {
       console.error('PPTX export failed:', err)
+      setExportError('PPTX-export misslyckades. Försök igen.')
     } finally {
       setExportingPptx(false)
     }
@@ -88,6 +95,7 @@ export default function App() {
     const el = document.getElementById('pitch-export')
     if (!el) return
     setExporting(true)
+    setExportError(null)
     try {
       const { default: html2canvas } = await import('html2canvas')
       const canvas = await html2canvas(el, {
@@ -103,6 +111,7 @@ export default function App() {
       link.click()
     } catch (err) {
       console.error('Export failed:', err)
+      setExportError('PNG-export misslyckades. Försök igen.')
     } finally {
       setExporting(false)
     }
@@ -186,23 +195,28 @@ export default function App() {
           </div>
 
           {view === 'pitch' && (
-            <div className="flex gap-2">
-              <button
-                onClick={exportPNG}
-                disabled={exporting}
-                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ background: '#374151' }}
-              >
-                {exporting ? 'Exporting…' : '⬇ PNG'}
-              </button>
-              <button
-                onClick={exportPPTX}
-                disabled={exportingPptx}
-                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                style={{ background: '#374151' }}
-              >
-                {exportingPptx ? 'Exporting…' : '⬇ PPTX'}
-              </button>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex gap-2">
+                <button
+                  onClick={exportPNG}
+                  disabled={exporting}
+                  className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                  style={{ background: '#374151' }}
+                >
+                  {exporting ? 'Exporting…' : '⬇ PNG'}
+                </button>
+                <button
+                  onClick={exportPPTX}
+                  disabled={exportingPptx}
+                  className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                  style={{ background: '#374151' }}
+                >
+                  {exportingPptx ? 'Exporting…' : '⬇ PPTX'}
+                </button>
+              </div>
+              {exportError && (
+                <p className="text-red-400 text-xs">{exportError}</p>
+              )}
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 const POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
 
-export default function PlayerRow({ player, side, updatePlayer, deletePlayer }) {
-  const up = (field, val) => updatePlayer(side, player.id, { [field]: val })
+export default function PlayerRow({ player, updatePlayer, deletePlayer }) {
+  const up = (field, val) => updatePlayer(player.id, { [field]: val })
 
   return (
     <tr className="border-t border-white/5 hover:bg-white/5 transition-colors">
@@ -65,7 +65,7 @@ export default function PlayerRow({ player, side, updatePlayer, deletePlayer }) 
       </td>
       <td className="px-1 py-1 text-center">
         <button
-          onClick={() => deletePlayer(side, player.id)}
+          onClick={() => deletePlayer(player.id)}
           className="text-red-500 hover:text-red-400 text-xs px-1"
           title="Delete"
         >

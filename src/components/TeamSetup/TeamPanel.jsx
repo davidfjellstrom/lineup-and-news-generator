@@ -7,6 +7,30 @@ import FixturePicker from './FixturePicker'
 const thClass = 'px-1 py-1.5 text-left text-xs font-medium text-gray-400 whitespace-nowrap'
 const sectionClass = 'text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-3'
 
+const VALID_POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
+
+function toPlayer(p, isStarter) {
+  return {
+    id: crypto.randomUUID(),
+    number: p.number ?? '',
+    firstName: (p.firstName ?? '').toUpperCase(),
+    lastName: (p.lastName ?? '').toUpperCase(),
+    position: VALID_POSITIONS.includes(p.position) ? p.position : 'MID',
+    positionLabel: p.positionLabel ?? '',
+    photo: p.photo ?? '',
+    clubLogo: p.clubLogoUrl ?? '',
+    clubName: p.clubName ?? '',
+    notes: '',
+    isStarter,
+    age: p.age ?? null,
+    height: p.height ?? null,
+    foot: p.foot ?? null,
+    caps: p.caps ?? null,
+    goals: p.goals ?? null,
+    marketValue: p.marketValue ?? null,
+  }
+}
+
 export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId }) {
   const label = side === 'homeTeam' ? 'Home Team' : 'Away Team'
   const starters = team.players.filter((p) => p.isStarter)
@@ -43,28 +67,6 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
 
       if (startersData.length === 0) throw new Error('Inga spelare returnerades')
 
-      function toPlayer(p, isStarter) {
-        return {
-          id: crypto.randomUUID(),
-          number: p.number ?? '',
-          firstName: (p.firstName ?? '').toUpperCase(),
-          lastName: (p.lastName ?? '').toUpperCase(),
-          position: ['GK', 'DEF', 'MID', 'FWD'].includes(p.position) ? p.position : 'MID',
-          positionLabel: p.positionLabel ?? '',
-          photo: p.photo ?? '',
-          clubLogo: p.clubLogoUrl ?? '',
-          clubName: p.clubName ?? '',
-          notes: '',
-          isStarter,
-          age: p.age ?? null,
-          height: p.height ?? null,
-          foot: p.foot ?? null,
-          caps: p.caps ?? null,
-          goals: p.goals ?? null,
-          marketValue: p.marketValue ?? null,
-        }
-      }
-
       const allPlayers = [
         ...startersData.map((p) => toPlayer(p, true)),
         ...substitutes.map((p) => toPlayer(p, false)),
@@ -94,7 +96,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     setMatch((m) => ({ ...m, [side]: { ...m[side], ...updates } }))
   }
 
-  function updatePlayer(_, playerId, updates) {
+  function updatePlayer(playerId, updates) {
     setMatch((m) => ({
       ...m,
       [side]: {
@@ -104,7 +106,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     }))
   }
 
-  function deletePlayer(_, playerId) {
+  function deletePlayer(playerId) {
     setMatch((m) => ({
       ...m,
       [side]: {
@@ -289,7 +291,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             </thead>
             <tbody>
               {starters.map((p) => (
-                <PlayerRow key={p.id} player={p} side={side} updatePlayer={updatePlayer} deletePlayer={deletePlayer} />
+                <PlayerRow key={p.id} player={p} updatePlayer={updatePlayer} deletePlayer={deletePlayer} />
               ))}
             </tbody>
           </table>
@@ -329,7 +331,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             </thead>
             <tbody>
               {subs.map((p) => (
-                <PlayerRow key={p.id} player={p} side={side} updatePlayer={updatePlayer} deletePlayer={deletePlayer} />
+                <PlayerRow key={p.id} player={p} updatePlayer={updatePlayer} deletePlayer={deletePlayer} />
               ))}
             </tbody>
           </table>
