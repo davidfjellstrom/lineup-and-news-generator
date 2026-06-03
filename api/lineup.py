@@ -146,6 +146,17 @@ def _fetch_squad_af(team_name: str) -> list[dict] | None:
 
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
+_TRUSTED_SOURCES = """TRUSTED SOURCES — only use information from:
+- FIFA.com — official squad registrations, jersey numbers, FIFA rankings
+- Transfermarkt (transfermarkt.com) — market values, caps, goals, player stats
+- Sky Sports (skysports.com) — pre-match team news, injury updates, probable XIs
+- BBC Sport (bbc.com/sport) — match news and lineup reporting
+- ESPN (espn.com) — international football coverage
+- Official national federation websites (e.g. fa.com, fff.fr, dfb.de) — primary source for squad announcements and press conferences
+
+Do NOT use Wikipedia, fan wikis, betting sites, or any source published before January 1, 2026."""
+
+
 def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
     player_schema = f"""Each player (in both arrays) has:
 - number: official jersey number as registered with FIFA (integer)
@@ -180,7 +191,9 @@ No markdown fences, no explanation — pure JSON object."""
     if mode == "match":
         return f"""Today is June 2026. Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
 
-Search UEFA.com, FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
+{_TRUSTED_SOURCES}
+
+Search FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
 
 Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
 
@@ -190,9 +203,11 @@ For each player's clubName: verify their CURRENT club as of June 2026 — player
     else:
         return f"""Today is June 2026. You must find accurate, up-to-date information — do not rely on training data or cached knowledge.
 
+{_TRUSTED_SOURCES}
+
 STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squad registration. This is the authoritative source for jersey numbers and selected players.
 
-STEP 2 — Player stats: Search Transfermarkt's {team} national team page (transfermarkt.com) for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
+STEP 2 — Player stats: Search Transfermarkt's {team} national team page for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
 
 STEP 3 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026". Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier. If a player's current club is unclear, search explicitly before filling in clubName.
 
@@ -232,6 +247,8 @@ def _build_enrichment_prompt(team: str, formation: str, squad: list[dict]) -> st
 
 {team}'s WC 2026 squad is already confirmed — do NOT search for who is in the squad.
 
+{_TRUSTED_SOURCES}
+
 CONFIRMED SQUAD ({len(squad)} players):
 {squad_lines}
 
@@ -239,9 +256,9 @@ Your tasks:
 
 STEP 1 — Transfermarkt stats: Search Transfermarkt's {team} national team page for market values, caps, goals, height, and preferred foot for each player. Also get total squad value, average age, and FIFA world ranking.
 
-STEP 2 — Current clubs: For any player whose current club is unclear, search "[player name] club 2026". Players transfer frequently — verify clubs as of June 2026.
+STEP 2 — Current clubs: For any player whose current club is unclear, search "[player name] club 2026" on BBC Sport, Sky Sports, or ESPN. Players transfer frequently — verify clubs as of June 2026.
 
-STEP 3 — Starting XI: Based on recent {team} performances, select the most probable {formation} starting eleven from this squad.
+STEP 3 — Starting XI: Based on recent {team} performances reported on Sky Sports, BBC Sport, or ESPN, select the most probable {formation} starting eleven from this squad.
 
 Return ONLY a valid JSON object:
 - flag: flag emoji for {team}
