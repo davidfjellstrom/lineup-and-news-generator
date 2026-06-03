@@ -181,7 +181,7 @@ def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
 - avgAge: average age of all squad members listed (number rounded to 1 decimal, e.g. 27.4)
 - squadValue: total squad market value in millions EUR from Transfermarkt (number, e.g. 435)
 - source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
-- starters: array of exactly 11 starting players
+- starters: array of exactly 11 starting players — MUST include exactly 1 GK
 - substitutes: array of ALL remaining registered squad members not in the starting XI (typically 12–15 players for a 23–26 man squad — include everyone)
 
 {player_schema}
@@ -267,7 +267,7 @@ Return ONLY a valid JSON object:
 - avgAge: float (1 decimal)
 - squadValue: float (millions EUR)
 - source: source name and URL
-- starters: array of exactly 11 players
+- starters: array of exactly 11 players — MUST include exactly 1 GK
 - substitutes: array of ALL remaining squad members (include everyone not in starters)
 
 {player_schema}
@@ -277,19 +277,47 @@ No markdown fences, no explanation — pure JSON object."""
 
 # ─── Merge ────────────────────────────────────────────────────────────────────
 
+def _initial_last_key(first: str, last: str) -> str:
+    """Build a collision-resistant lookup key using first initial + last name.
+
+    Examples: ('VIKTOR', 'JOHANSSON') → 'V_JOHANSSON'
+              ('H.', 'JOHANSSON')     → 'H_JOHANSSON'
+    Falls back to last name only when first name is absent.
+    """
+    initial = first.strip(".")[0] if first.strip(".") else ""
+    return f"{initial}_{last}" if initial else last
+
+
 def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dict:
     """
     Combine API-Football squad data (authoritative player list and photos)
     with Claude's enrichment (stats, position labels, starting XI selection).
 
-    Matching is done by normalised last name. AF players that Claude missed
-    are included as substitutes with empty stats rather than dropped.
+    Matching uses first-initial + last name to avoid collisions when multiple
+    squad members share a surname (e.g. two players named Johansson).
+    AF players that Claude missed are included as substitutes with empty stats.
     """
-    af_by_last: dict[str, dict] = {_ascii_upper(p["lastName"]): p for p in af_squad}
+    # Primary lookup: first-initial + last name (e.g. 'V_JOHANSSON')
+    af_by_initial_last: dict[str, dict] = {
+        _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"])): p
+        for p in af_squad
+    }
+    # Fallback lookup: last name only — set to None if ambiguous (duplicate surnames)
+    af_by_last: dict[str, dict | None] = {}
+    for p in af_squad:
+        last = _ascii_upper(p["lastName"])
+        af_by_last[last] = None if last in af_by_last else p
+
+    def _find_af(claude_player: dict) -> dict:
+        last  = _ascii_upper(claude_player.get("lastName", ""))
+        first = _ascii_upper(claude_player.get("firstName", ""))
+        return (
+            af_by_initial_last.get(_initial_last_key(first, last))
+            or (af_by_last.get(last) or {})
+        )
 
     def build_player(claude_player: dict, is_starter: bool) -> dict:
-        key = _ascii_upper(claude_player.get("lastName", ""))
-        af = af_by_last.get(key, {})
+        af = _find_af(claude_player)
         return {
             # Identity: AF is authoritative for names; Claude fills gaps
             "firstName": af.get("firstName") or claude_player.get("firstName", ""),
@@ -318,9 +346,13 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
     substitutes = [build_player(p, False) for p in claude_data.get("substitutes", [])]
 
     # Add AF players that Claude missed so no squad member is lost
-    accounted = {_ascii_upper(p["lastName"]) for p in starters + substitutes}
+    accounted = {
+        _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"]))
+        for p in starters + substitutes
+    }
     for af_p in af_squad:
-        if _ascii_upper(af_p["lastName"]) not in accounted:
+        key = _initial_last_key(_ascii_upper(af_p.get("firstName", "")), _ascii_upper(af_p["lastName"]))
+        if key not in accounted:
             log.info("  + AF-spelare saknas i Claude-svar, läggs till: %s", af_p["lastName"])
             substitutes.append({
                 "firstName":   af_p["firstName"],
@@ -342,13 +374,22 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
                 "notes":       "",
             })
 
+    # Safety net: if Claude forgot a GK, promote the first GK from substitutes
+    if not any(p.get("position") == "GK" for p in starters):
+        for i, p in enumerate(substitutes):
+            if p.get("position") == "GK":
+                p["isStarter"] = True
+                starters.append(substitutes.pop(i))
+                log.info("  ⚠ Ingen GK i startelvans — lade till %s från bänken", p.get("lastName"))
+                break
+
     return {
         "flag":        claude_data.get("flag", ""),
         "coach":       claude_data.get("coach", ""),
         "fifaRanking": claude_data.get("fifaRanking"),
         "avgAge":      claude_data.get("avgAge"),
         "squadValue":  claude_data.get("squadValue"),
-        "source":      claude_data.get("source", f"API-Football + Claude"),
+        "source":      claude_data.get("source", "API-Football + Claude"),
         "mode":        "pre-match",
         "starters":    starters,
         "substitutes": substitutes,
