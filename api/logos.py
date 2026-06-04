@@ -48,7 +48,13 @@ def _get_country_slugs(country: str) -> list:
 
 def _fuzzy_match_slug(target: str, candidates: list) -> str:
     """Pick the candidate with highest word-overlap against target slug."""
-    noise = {"fc", "sc", "ac", "bc", "rc", "afc", "if", "bk", "sk", "ff", "fk", "ik", "de", "la", "le"}
+    # Generic suffixes/words that appear in many club names and should not be
+    # the sole basis for a match (e.g. "wanderers" is shared by Wolverhampton
+    # Wanderers, Dorking Wanderers, Bolton Wanderers, etc.).
+    noise = {
+        "fc", "sc", "ac", "bc", "rc", "afc", "if", "bk", "sk", "ff", "fk", "ik", "de", "la", "le",
+        "wanderers", "united", "city", "hotspur", "athletic", "rovers", "town", "albion",
+    }
     target_words = set(target.split("-")) - noise
     if not target_words:
         return ""
