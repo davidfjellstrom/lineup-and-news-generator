@@ -251,7 +251,7 @@ export default function App() {
         <div style={{ display: view === 'pitch' ? undefined : 'none' }}>
           <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} />
         </div>
-        {view === 'news' && <NewsFeed />}
+        {view === 'news' && <NewsFeed match={match} />}
       </main>
     </div>
   )

@@ -75,10 +75,11 @@ def proxy_image(url: str = Query(...)):
 
 
 @app.get("/api/news")
-def get_news(q: str = Query(default="World Cup 2026 football")):
+def get_news(q: str = Query(default="World Cup 2026 football"), sources: str = Query(default="")):
     client = get_client()
+    source_list = [s.strip() for s in sources.split(",") if s.strip()] if sources else []
     try:
-        return fetch_news(q, client)
+        return fetch_news(q, client, source_list or None)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
