@@ -288,25 +288,48 @@ def _initial_last_key(first: str, last: str) -> str:
     return f"{initial}_{last}" if initial else last
 
 
+def _name_tokens(first: str, last: str) -> frozenset[str]:
+    """Return meaningful name tokens (≥4 chars) from a player's full name.
+
+    Used for fuzzy deduplication of single-name players (e.g. Ederson, Vinicius)
+    where full legal names (Ederson Moraes) and nicknames diverge between sources.
+    """
+    return frozenset(
+        t for t in (_ascii_upper(first) + " " + _ascii_upper(last)).split()
+        if len(t) >= 4
+    )
+
+
 def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dict:
     """
     Combine API-Football squad data (authoritative player list and photos)
     with Claude's enrichment (stats, position labels, starting XI selection).
 
-    Matching uses first-initial + last name to avoid collisions when multiple
-    squad members share a surname (e.g. two players named Johansson).
-    AF players that Claude missed are included as substitutes with empty stats.
+    Matching strategy (in order of priority):
+    1. first-initial + last name  ('V_JOHANSSON') — handles same-surname collisions
+    2. last name only             ('JOHANSSON')   — unambiguous surnames
+    3. AF first name == Claude last name          — single-name players ('EDERSON')
+
+    AF players that Claude missed are included as substitutes using token-based
+    deduplication to catch name format mismatches (e.g. 'Ederson' vs 'Ederson Moraes').
     """
-    # Primary lookup: first-initial + last name (e.g. 'V_JOHANSSON')
+    # Build lookup tables
     af_by_initial_last: dict[str, dict] = {
         _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"])): p
         for p in af_squad
     }
-    # Fallback lookup: last name only — set to None if ambiguous (duplicate surnames)
     af_by_last: dict[str, dict | None] = {}
     for p in af_squad:
         last = _ascii_upper(p["lastName"])
         af_by_last[last] = None if last in af_by_last else p
+
+    # Extra lookup: AF first name as key — catches single-name players where
+    # Claude uses the nickname as lastName (e.g. lastName="EDERSON", AF firstName="EDERSON")
+    af_by_first: dict[str, dict] = {}
+    for p in af_squad:
+        first = _ascii_upper(p.get("firstName", ""))
+        if first and first not in af_by_first:
+            af_by_first[first] = p
 
     def _find_af(claude_player: dict) -> dict:
         last  = _ascii_upper(claude_player.get("lastName", ""))
@@ -314,6 +337,9 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
         return (
             af_by_initial_last.get(_initial_last_key(first, last))
             or (af_by_last.get(last) or {})
+            or af_by_first.get(last)   # e.g. Claude lastName "EDERSON" == AF firstName "EDERSON"
+            or af_by_first.get(first)
+            or {}
         )
 
     def build_player(claude_player: dict, is_starter: bool) -> dict:
@@ -345,14 +371,17 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
     starters    = [build_player(p, True)  for p in claude_data.get("starters", [])]
     substitutes = [build_player(p, False) for p in claude_data.get("substitutes", [])]
 
-    # Add AF players that Claude missed so no squad member is lost
-    accounted = {
-        _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"]))
-        for p in starters + substitutes
-    }
+    # Add AF players that Claude missed so no squad member is lost.
+    # Use token-based matching to handle single-name players (e.g. "Ederson Moraes"
+    # in AF vs "Ederson" in Claude) where initial+last keys would diverge.
+    accounted_tokens: set[str] = set()
+    for p in starters + substitutes:
+        accounted_tokens |= _name_tokens(p.get("firstName", ""), p.get("lastName", ""))
+
     for af_p in af_squad:
-        key = _initial_last_key(_ascii_upper(af_p.get("firstName", "")), _ascii_upper(af_p["lastName"]))
-        if key not in accounted:
+        af_tokens = _name_tokens(af_p.get("firstName", ""), af_p["lastName"])
+        if af_tokens & accounted_tokens:
+            continue  # At least one name token matched — player already present
             log.info("  + AF-spelare saknas i Claude-svar, läggs till: %s", af_p["lastName"])
             substitutes.append({
                 "firstName":   af_p["firstName"],
