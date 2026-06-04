@@ -152,10 +152,10 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
 
   return (
     <div className="px-3 py-4 min-w-0">
-      <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#111827' }}>
+      <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#0f0c29' }}>
 
         {/* Team headers */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ background: '#1f2937' }}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div>
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide">
               <span>{homeTeam.flag}</span>
@@ -172,7 +172,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={homeColor}
                 onChange={(e) => pickHomeColor(e.target.value)}
                 className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
-                style={{ background: '#1f2937', color: homeColor, border: `1px solid ${homeColor}`, outline: 'none' }}
+                style={{ background: '#221e3a', color: homeColor, border: `1px solid ${homeColor}`, outline: 'none' }}
               >
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -204,7 +204,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={awayColor}
                 onChange={(e) => pickAwayColor(e.target.value)}
                 className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
-                style={{ background: '#1f2937', color: awayColor, border: `1px solid ${awayColor}`, outline: 'none' }}
+                style={{ background: '#221e3a', color: awayColor, border: `1px solid ${awayColor}`, outline: 'none' }}
               >
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>

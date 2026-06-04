@@ -141,16 +141,18 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen" style={{ background: 'radial-gradient(ellipse at 50% 20%, #ffffff 0%, #c4c4c4 100%)' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #0f0c29 0%, #2d1b69 60%, #4a1080 100%)' }}>
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
-        style={{ background: 'linear-gradient(135deg, #221e3a 0%, #1a1730 100%)', borderBottom: '1px solid rgba(99,102,241,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.4)' }}
+        className="sticky top-0 z-50 flex items-center justify-between px-4 py-5"
+        style={{ background: 'linear-gradient(135deg, #1e1b6e 0%, #4c1994 100%)', borderBottom: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 2px 24px rgba(0,0,0,0.5)' }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-lg">⚽</span>
-          <span className="text-sm font-bold text-white hidden sm:block">
-            World Cup 2026 · Lineup Generator
+          <span
+            className="text-white hidden sm:block"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '1.5rem', fontWeight: 700, fontStyle: 'italic', letterSpacing: '0.07em', lineHeight: 1 }}
+          >
+            LINEUP &amp; NEWS GENERATOR
           </span>
           <button
             onClick={newMatch}
@@ -227,11 +229,11 @@ export default function App() {
       {/* ── Match info bar (pitch view) ── */}
       {view === 'pitch' && (
         <div
-          className="flex items-center justify-center gap-3 px-4 py-2 text-xs text-gray-400"
-          style={{ background: '#161e2a' }}
+          className="flex items-center justify-center gap-3 px-4 py-2 text-xs font-medium tracking-wider"
+          style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', color: 'rgba(255,255,255,0.8)', borderTop: '0.5px solid #ffffff', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
         >
           <span>{match.homeTeam.flag} {match.homeTeam.name}</span>
-          <span className="text-gray-600">vs</span>
+          <span style={{ color: 'rgba(255,255,255,0.35)' }}>vs</span>
           <span>{match.awayTeam.flag} {match.awayTeam.name}</span>
         </div>
       )}

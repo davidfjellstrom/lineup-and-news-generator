@@ -23,7 +23,7 @@ function ArticleCard({ article }) {
   return (
     <div
       className="rounded-lg p-4 flex flex-col gap-1"
-      style={{ background: '#1f2937', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.18)' }}
     >
       <div className="flex items-center gap-3">
         <span
@@ -104,13 +104,13 @@ export default function NewsFeed() {
           onKeyDown={handleKeyDown}
           placeholder="Search football news…"
           className="flex-1 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-green-600"
-          style={{ background: '#1f2937', border: '1px solid #374151' }}
+          style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.25)' }}
         />
         <button
           onClick={() => doSearch(query)}
           disabled={loading}
           className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors"
-          style={{ background: loading ? '#374151' : '#16a34a' }}
+          style={{ background: loading ? '#374151' : 'linear-gradient(135deg, #4338ca, #7c3aed)', boxShadow: loading ? 'none' : '0 0 14px rgba(109,40,217,0.22)' }}
         >
           {loading ? '…' : 'Search'}
         </button>
@@ -122,8 +122,8 @@ export default function NewsFeed() {
           <button
             key={f}
             onClick={() => quickFilter(f)}
-            className="px-3 py-1 rounded-full text-xs font-medium transition-colors text-gray-300 hover:text-white hover:bg-green-700"
-            style={{ background: '#374151' }}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-colors hover:text-white"
+            style={{ background: 'transparent', border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc' }}
           >
             {f}
           </button>
@@ -150,7 +150,7 @@ export default function NewsFeed() {
             <div
               key={i}
               className="rounded-lg p-4 animate-pulse"
-              style={{ background: '#1f2937', height: 90 }}
+              style={{ background: '#221e3a', height: 90 }}
             />
           ))}
         </div>
