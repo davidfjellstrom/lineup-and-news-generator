@@ -2,5 +2,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index.py" }]
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index.py" }],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 120
+    }
+  }
 }
