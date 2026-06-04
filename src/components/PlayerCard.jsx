@@ -169,14 +169,14 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             {[
               player.positionLabel,
               player.age ? `${player.age}å` : null,
-              compact ? null : (player.height ? `${player.height}` : null),
-              compact ? null : (player.foot ? `${player.foot}.f` : null),
+              player.height ? `${player.height}` : null,
+              player.foot ? `${player.foot}.f` : null,
             ].filter(Boolean).join(' · ')}
           </div>
         )}
 
         {/* Caps / goals */}
-        {!compact && player.caps > 0 && (
+        {player.caps > 0 && (
           <div
             className="text-center"
             style={{ fontSize: fontSize.stats, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}
