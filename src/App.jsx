@@ -22,10 +22,16 @@ function loadSaved() {
 
 export default function App() {
   const [match, setMatch] = useState(() => loadSaved() || emptyMatch)
-  const [view, setView] = useState('setup') // 'setup' | 'pitch' | 'news'
+  const VALID_VIEWS = ['setup', 'pitch', 'news']
+  const hashView = window.location.hash.replace('#', '')
+  const [view, setView] = useState(VALID_VIEWS.includes(hashView) ? hashView : 'setup')
   const [exporting, setExporting] = useState(false)
   const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
   const pitchRef = useRef(null)
+
+  useEffect(() => {
+    window.location.hash = view
+  }, [view])
   const [exportingPptx, setExportingPptx] = useState(false)
   const [exportError, setExportError] = useState(null)
 
