@@ -346,14 +346,14 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
 
     def build_player(claude_player: dict, is_starter: bool) -> dict:
         af = _find_af(claude_player)
+        # Prefer Claude's firstName: AF /squads returns abbreviated initials like "E."
+        # Claude has been instructed to expand these to full names.
+        af_first = af.get("firstName", "")
+        claude_first = claude_player.get("firstName", "")
+        is_af_initial = len(af_first.rstrip(".")) <= 1
+        first_name = claude_first if claude_first and (is_af_initial or not af_first) else af_first or claude_first
         return {
-            # Identity: prefer Claude's firstName because AF /squads returns abbreviated
-            # initials like "E." — Claude has been instructed to expand these to full names.
-            # Fall back to AF if Claude returned nothing.
-            af_first = af.get("firstName", "")
-            claude_first = claude_player.get("firstName", "")
-            is_af_initial = len(af_first.rstrip(".")) <= 1
-            "firstName": (claude_first if claude_first and (is_af_initial or not af_first) else af_first or claude_first),
+            "firstName": first_name,
             "lastName":  af.get("lastName")  or claude_player.get("lastName", ""),
             "number":    claude_player.get("number") or af.get("number") or 0,
             "position":  af.get("position") or claude_player.get("position", "MID"),
