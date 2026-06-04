@@ -40,7 +40,7 @@ def run_with_search(
     for iteration in range(8):
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=4096,
+            max_tokens=8192,
             tools=tools,
             messages=messages,
         )
@@ -452,6 +452,73 @@ def _enrich_with_logos_and_photos(team: str, all_players: list[dict]) -> None:
                 p["photo"] = photo
 
 
+# ─── AF-only degraded result ──────────────────────────────────────────────────
+
+def _af_squad_as_basic_result(af_squad: list[dict], formation: str) -> dict:
+    """
+    Build a minimal lineup result from the AF squad alone, without Claude enrichment.
+    Used when Claude fails — the user gets players with photos but no stats.
+
+    Starters are selected by position to match the requested formation.
+    """
+    def to_player(p: dict, is_starter: bool) -> dict:
+        return {
+            "firstName":   p["firstName"],
+            "lastName":    p["lastName"],
+            "number":      p.get("number") or 0,
+            "position":    p["position"],
+            "positionLabel": "",
+            "photo":       p.get("photo", ""),
+            "age":         p.get("age"),
+            "height":      None,
+            "foot":        None,
+            "caps":        None,
+            "goals":       None,
+            "marketValue": None,
+            "clubName":    "",
+            "clubCountry": "",
+            "clubSlug":    "",
+            "isStarter":   is_starter,
+            "notes":       "",
+        }
+
+    groups: dict[str, list] = {"GK": [], "DEF": [], "MID": [], "FWD": []}
+    for p in af_squad:
+        groups.get(p["position"], groups["MID"]).append(p)
+
+    try:
+        parts = [int(x) for x in formation.split("-")]
+        slots = {"GK": 1, "DEF": parts[0], "MID": parts[1], "FWD": parts[2]}
+    except (ValueError, IndexError):
+        slots = {"GK": 1, "DEF": 4, "MID": 3, "FWD": 3}
+
+    starters = []
+    for pos, count in slots.items():
+        starters.extend(groups[pos][:count])
+
+    starter_keys = {
+        _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"]))
+        for p in starters
+    }
+    substitutes = [
+        p for p in af_squad
+        if _initial_last_key(_ascii_upper(p.get("firstName", "")), _ascii_upper(p["lastName"]))
+        not in starter_keys
+    ]
+
+    return {
+        "flag":        "",
+        "coach":       "",
+        "fifaRanking": None,
+        "avgAge":      None,
+        "squadValue":  None,
+        "source":      "API-Football (AI-berikande misslyckades — statistik saknas)",
+        "mode":        "pre-match",
+        "starters":    [to_player(p, True)  for p in starters],
+        "substitutes": [to_player(p, False) for p in substitutes],
+    }
+
+
 # ─── Match-mode lineup from API-Football ──────────────────────────────────────
 
 def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
@@ -564,13 +631,16 @@ def fetch_lineup(
                 data["mode"] = mode
                 _enrich_with_logos_and_photos(team, data["starters"] + data["substitutes"])
                 return data
-            log.info("[%s] Claude-svar saknar starters — faller tillbaka på Claude-only", team)
+            log.info("[%s] Claude-svar saknar starters", team)
         except (json.JSONDecodeError, AttributeError) as e:
-            log.info("[%s] Hybrid-parsning misslyckades (%s) — faller tillbaka på Claude-only", team, e)
+            log.info("[%s] Hybrid-parsning misslyckades: %s", team, e)
 
-    # ── Fallback: full Claude-only approach ───────────────────────────────────
-    if af_squad is not None:
-        log.info("[%s] Kör Claude-only som fallback", team)
+        # Claude enrichment failed but we have the AF squad — return it as a
+        # degraded result rather than running a second expensive Claude loop.
+        log.info("[%s] Returnerar AF-trupp utan AI-berikande", team)
+        return _af_squad_as_basic_result(af_squad, formation)
+
+    # ── Fallback: Claude-only (only reached when AF returned no squad) ────────
     prompt = _build_lineup_prompt(team, formation, mode)
     text = run_with_search(client, prompt, max_uses=8, label=team)
 
