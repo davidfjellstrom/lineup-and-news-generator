@@ -207,8 +207,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
           style={{
             fontSize: fontSize.note,
             color: 'rgba(255,255,230,0.85)',
-            minWidth: compact ? 48 : 56,
-            maxWidth: compact ? 68 : 88,
+            width: '100%',
             marginTop: 2,
             lineHeight: '1.3',
             whiteSpace: 'nowrap',
