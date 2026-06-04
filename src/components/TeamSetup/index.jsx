@@ -73,7 +73,7 @@ export default function TeamSetup({ match, setMatch, matchMode, onViewLineup }) 
 
       <div
         className="mt-4 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-        style={{ background: '#1e3330', border: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: '#2a4432', border: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div className="flex-1 flex items-center gap-3">
           <label className="text-xs text-gray-400 uppercase tracking-wider whitespace-nowrap">
@@ -86,13 +86,13 @@ export default function TeamSetup({ match, setMatch, matchMode, onViewLineup }) 
             }
             placeholder="REFEREE NAME"
             className="flex-1 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-green-600"
-            style={{ background: '#243f3c' }}
+            style={{ background: '#1e3226' }}
           />
         </div>
         <button
           onClick={onViewLineup}
           className="px-6 py-2 rounded-lg text-sm font-bold text-white transition-colors hover:brightness-110"
-          style={{ background: '#57ba98' }}
+          style={{ background: '#68BA7F' }}
         >
           View Lineup →
         </button>

@@ -100,7 +100,7 @@ export default function App() {
       const { default: html2canvas } = await import('html2canvas')
       const canvas = await html2canvas(el, {
         scale: 2,
-        backgroundColor: '#182628',
+        backgroundColor: '#253D2C',
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -131,7 +131,7 @@ export default function App() {
       onClick={() => setView(target)}
       className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
       style={{
-        background: view === target ? '#3b945e' : 'transparent',
+        background: view === target ? '#2E6F40' : 'transparent',
         color: view === target ? 'white' : '#9ca3af',
       }}
     >
@@ -140,11 +140,11 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen" style={{ background: '#182628' }}>
+    <div className="min-h-screen" style={{ background: '#253D2C' }}>
       {/* ── Header ── */}
       <header
         className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
-        style={{ background: '#1e3330', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: '#2a4432', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-2">
           <span className="text-lg">⚽</span>
@@ -176,8 +176,8 @@ export default function App() {
               onClick={() => setMatchMode('pre-match')}
               className="px-3 py-1.5 transition-colors"
               style={{
-                background: matchMode === 'pre-match' ? '#1a3d3a' : 'transparent',
-                color: matchMode === 'pre-match' ? '#65ccb8' : '#6b7280',
+                background: matchMode === 'pre-match' ? '#253D2C' : 'transparent',
+                color: matchMode === 'pre-match' ? '#CFFFDC' : '#6b7280',
               }}
             >
               Pre-match
@@ -186,7 +186,7 @@ export default function App() {
               onClick={() => setMatchMode('match')}
               className="px-3 py-1.5 transition-colors"
               style={{
-                background: matchMode === 'match' ? '#2d6b4a' : 'transparent',
+                background: matchMode === 'match' ? '#2E6F40' : 'transparent',
                 color: matchMode === 'match' ? '#f2f2f2' : '#6b7280',
               }}
             >
@@ -201,7 +201,7 @@ export default function App() {
                   onClick={exportPNG}
                   disabled={exporting}
                   className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                  style={{ background: '#243f3c' }}
+                  style={{ background: '#1e3226' }}
                 >
                   {exporting ? 'Exporting…' : '⬇ PNG'}
                 </button>
@@ -209,7 +209,7 @@ export default function App() {
                   onClick={exportPPTX}
                   disabled={exportingPptx}
                   className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
-                  style={{ background: '#243f3c' }}
+                  style={{ background: '#1e3226' }}
                 >
                   {exportingPptx ? 'Exporting…' : '⬇ PPTX'}
                 </button>
@@ -226,7 +226,7 @@ export default function App() {
       {view === 'pitch' && (
         <div
           className="flex items-center justify-center gap-3 px-4 py-2 text-xs text-gray-400"
-          style={{ background: '#142220' }}
+          style={{ background: '#1e3226' }}
         >
           <span>{match.homeTeam.flag} {match.homeTeam.name}</span>
           <span className="text-gray-600">vs</span>

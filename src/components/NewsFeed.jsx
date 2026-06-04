@@ -23,12 +23,12 @@ function ArticleCard({ article }) {
   return (
     <div
       className="rounded-lg p-4 flex flex-col gap-1"
-      style={{ background: '#1e3330', border: '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: '#2a4432', border: '1px solid rgba(255,255,255,0.06)' }}
     >
       <div className="flex items-center gap-3">
         <span
           className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded"
-          style={{ background: '#1e4a38', color: '#65ccb8' }}
+          style={{ background: '#253D2C', color: '#CFFFDC' }}
         >
           {article.source}
         </span>
@@ -46,7 +46,7 @@ function ArticleCard({ article }) {
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs hover:opacity-80 mt-1 self-start"
-          style={{ color: '#65ccb8' }}
+          style={{ color: '#CFFFDC' }}
         >
           Read →
         </a>
@@ -105,13 +105,13 @@ export default function NewsFeed() {
           onKeyDown={handleKeyDown}
           placeholder="Search football news…"
           className="flex-1 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-green-600"
-          style={{ background: '#1e3330', border: '1px solid #243f3c' }}
+          style={{ background: '#2a4432', border: '1px solid #1e3226' }}
         />
         <button
           onClick={() => doSearch(query)}
           disabled={loading}
           className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-colors"
-          style={{ background: loading ? '#243f3c' : '#57ba98' }}
+          style={{ background: loading ? '#1e3226' : '#68BA7F' }}
         >
           {loading ? '…' : 'Search'}
         </button>
@@ -124,7 +124,7 @@ export default function NewsFeed() {
             key={f}
             onClick={() => quickFilter(f)}
             className="px-3 py-1 rounded-full text-xs font-medium transition-colors text-gray-300 hover:text-white"
-            style={{ background: '#243f3c' }}
+            style={{ background: '#1e3226' }}
           >
             {f}
           </button>
@@ -151,7 +151,7 @@ export default function NewsFeed() {
             <div
               key={i}
               className="rounded-lg p-4 animate-pulse"
-              style={{ background: '#1e3330', height: 90 }}
+              style={{ background: '#2a4432', height: 90 }}
             />
           ))}
         </div>
