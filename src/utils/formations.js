@@ -1,5 +1,18 @@
 export const FORMATIONS = ['4-3-3', '4-2-3-1', '4-4-2', '3-5-2', '5-3-2', '3-4-3', '4-1-4-1', '3-4-2-1']
 
+// Derive broad position from specific positionLabel set by Claude.
+// Falls back to the player's existing position field if positionLabel is unknown.
+const POSITION_FROM_LABEL = {
+  GK: 'GK',
+  LB: 'DEF', LWB: 'DEF', CB: 'DEF', RB: 'DEF', RWB: 'DEF',
+  CDM: 'MID', CM: 'MID', CAM: 'MID', LM: 'MID', RM: 'MID',
+  LW: 'FWD', RW: 'FWD', ST: 'FWD', CF: 'FWD', SS: 'FWD',
+}
+
+function broadPosition(player) {
+  return POSITION_FROM_LABEL[player.positionLabel] ?? player.position
+}
+
 // Lateral rank: 0 = left touchline, 1 = right touchline (from home team's perspective).
 // Used to sort players within a line so that LW/LB appear near the top of the screen
 // (home team's left side) and RW/RB near the bottom.
@@ -25,13 +38,13 @@ function lateralRank(player) {
 // side = 'away'  → away attacks left;  LW/LB sorted to bottom of screen (high y)
 //   (because the away team's left side is the opposite physical touchline)
 export function groupIntoLines(starters, formation, side = 'home') {
-  const gks = starters.filter(p => p.position === 'GK')
+  const gks = starters.filter(p => broadPosition(p) === 'GK')
 
   const posOrder = { DEF: 0, MID: 1, FWD: 2 }
   const outfield = starters
-    .filter(p => p.position !== 'GK')
+    .filter(p => broadPosition(p) !== 'GK')
     .sort((a, b) => {
-      const diff = (posOrder[a.position] ?? 1) - (posOrder[b.position] ?? 1)
+      const diff = (posOrder[broadPosition(a)] ?? 1) - (posOrder[broadPosition(b)] ?? 1)
       return diff !== 0 ? diff : a.number - b.number
     })
 
