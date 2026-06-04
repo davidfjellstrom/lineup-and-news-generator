@@ -211,6 +211,9 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             maxWidth: compact ? 68 : 88,
             marginTop: 2,
             lineHeight: '1.3',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
           onBlur={(e) => onNoteChange(e.currentTarget.textContent)}
         />
