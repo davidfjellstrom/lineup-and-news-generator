@@ -120,9 +120,11 @@ def _fetch_squad_af(team_name: str) -> list[dict] | None:
             return None
 
         def parse_name(full: str) -> tuple[str, str]:
+            # Use plain .upper() — not _ascii_upper() — so that ø/æ/å are preserved
+            # for display. _ascii_upper() is only for lookup-key normalisation.
             parts = full.strip().split(" ", 1)
-            first = _ascii_upper(parts[0]) if len(parts) > 1 else ""
-            last = _ascii_upper(parts[-1])
+            first = parts[0].upper() if len(parts) > 1 else ""
+            last = parts[-1].upper()
             return first, last
 
         result = []
@@ -228,8 +230,8 @@ def _build_enrichment_prompt(team: str, formation: str, squad: list[dict]) -> st
     )
 
     player_schema = """Each player has:
-- lastName: UPPERCASE — use the exact spelling from the squad list above
-- firstName: UPPERCASE
+- lastName: UPPERCASE — use the exact spelling from the squad list above (preserve special characters like Ø, Æ, Å)
+- firstName: full first name in UPPERCASE — never use initials or abbreviations (if the squad list shows "E." expand it to the full name, e.g. "ERLING")
 - number: jersey number (integer)
 - position: GK/DEF/MID/FWD
 - positionLabel: specific role, e.g. "CB", "LB", "LW", "CDM", "CM", "CAM", "ST"
