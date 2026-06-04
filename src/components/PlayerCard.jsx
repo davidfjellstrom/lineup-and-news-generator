@@ -1,5 +1,19 @@
 import { useRef, useEffect, useState } from 'react'
 
+/**
+ * Derive a readable stats text color from the team's ring color.
+ * Green shades get white text to maintain contrast on the green pitch.
+ */
+function statsColorFromTeamColor(hex) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return 'rgba(147,197,253,0.85)'
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const isGreen = g > r * 1.2 && g > b * 1.2 && g > 100
+  if (isGreen) return 'rgba(255,255,255,0.85)'
+  return `rgba(${r},${g},${b},0.85)`
+}
+
 const Silhouette = ({ size }) => (
   <svg
     viewBox="0 0 24 24"
@@ -150,7 +164,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
         {(player.positionLabel || player.age || player.height || player.foot) && (
           <div
             className="text-center truncate"
-            style={{ fontSize: fontSize.stats, color: 'rgba(147,197,253,0.85)', marginTop: 1 }}
+            style={{ fontSize: fontSize.stats, color: statsColorFromTeamColor(teamColor), marginTop: 1 }}
           >
             {[
               player.positionLabel,
