@@ -73,12 +73,26 @@ def _fetch_team_player_photos(team_name: str) -> dict:
 
         squad_resp = _af_get("players", {"team": team_id, "season": 2026})
 
-        photo_map = {}
+        # Build collision-aware photo map.
+        # Primary key: FIRSTNAME_LASTNAME (e.g. "VIKTOR_JOHANSSON").
+        # A bare LASTNAME shortcut is only added when no other player shares that surname,
+        # which prevents one Johansson from silently overwriting another.
+        raw: list[tuple[str, str, str]] = []
+        lastname_count: dict[str, int] = {}
         for entry in squad_resp.get("response", []):
             p = entry.get("player", {})
+            first = _ascii_upper(p.get("firstname") or "")
             last = _ascii_upper(p.get("lastname") or "")
             photo = p.get("photo", "")
             if last and photo:
+                raw.append((first, last, photo))
+                lastname_count[last] = lastname_count.get(last, 0) + 1
+
+        photo_map: dict[str, str] = {}
+        for first, last, photo in raw:
+            full_key = f"{first}_{last}" if first else last
+            photo_map[full_key] = photo
+            if lastname_count[last] == 1:
                 photo_map[last] = photo
         log.info("[%s] Hittade foton för %d spelare via API-Football", team_name, len(photo_map))
         _team_photo_cache[key] = photo_map

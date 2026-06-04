@@ -463,7 +463,10 @@ def _enrich_with_logos_and_photos(team: str, all_players: list[dict]) -> None:
 
     unmatched = []
     for p in all_players:
-        photo = photo_map.get(_ascii_upper(p.get("lastName", "")), "")
+        first = _ascii_upper(p.get("firstName", ""))
+        last = _ascii_upper(p.get("lastName", ""))
+        full_key = f"{first}_{last}" if first else last
+        photo = photo_map.get(full_key) or photo_map.get(last, "")
         if photo:
             p["photo"] = photo
         else:
