@@ -186,7 +186,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     <div className="flex-1 min-w-0">
       <div
         className="rounded-xl p-4"
-        style={{ background: '#2a4432', border: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: '#1f2937', border: '1px solid rgba(255,255,255,0.06)' }}
       >
         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">
           {label}
@@ -198,7 +198,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             onClick={fetchSquad}
             disabled={fetching || !team.name.trim() || (matchMode === 'match' && !selectedFixture)}
             className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40"
-            style={{ background: fetching ? '#1e3226' : matchMode === 'match' ? '#2E6F40' : '#57ba98' }}
+            style={{ background: fetching ? '#374151' : matchMode === 'match' ? '#15803d' : '#92400e' }}
             title={
               !team.name.trim() ? 'Välj lag först' :
               matchMode === 'match' && !selectedFixture ? 'Välj en match först' :
@@ -215,7 +215,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
           </button>
           {fetchError && <p className="text-red-400 text-xs mt-1">{fetchError}</p>}
           {source && (
-            <p className="text-xs mt-1" style={{ color: '#CFFFDC' }}>
+            <p className="text-xs mt-1" style={{ color: matchMode === 'match' ? '#86efac' : '#fde68a' }}>
               Källa: {source}
             </p>
           )}
@@ -224,14 +224,14 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
               onClick={saveTeam}
               disabled={team.players.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-40 hover:brightness-110"
-              style={{ background: '#2E6F40' }}
+              style={{ background: '#1d4ed8' }}
               title="Spara laget som en fil"
             >
               💾 Spara lag
             </button>
             <label
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white cursor-pointer transition-colors hover:brightness-110"
-              style={{ background: '#1e3226' }}
+              style={{ background: '#374151' }}
               title="Ladda ett sparat lag från fil"
             >
               📂 Ladda lag
@@ -259,7 +259,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             value={team.formation}
             onChange={(e) => updateTeam({ formation: e.target.value })}
             className="rounded-lg px-2 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-green-600"
-            style={{ background: '#1e3226' }}
+            style={{ background: '#374151' }}
           >
             {FORMATIONS.map((f) => <option key={f}>{f}</option>)}
           </select>
@@ -270,7 +270,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             onChange={(e) => updateTeam({ coach: e.target.value.toUpperCase() })}
             placeholder="COACH NAME"
             className="w-full rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-green-600"
-            style={{ background: '#1e3226' }}
+            style={{ background: '#374151' }}
           />
         </div>
 
@@ -300,14 +300,14 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
           <button
             onClick={() => addPlayer(true)}
             className="text-xs px-3 py-1 rounded-lg text-white hover:bg-green-700 transition-colors"
-            style={{ background: '#2E6F40' }}
+            style={{ background: '#16a34a' }}
           >
             + Add Starter
           </button>
           <button
             onClick={resetStarters}
             className="text-xs px-3 py-1 rounded-lg text-gray-300 hover:bg-white/10 transition-colors"
-            style={{ background: '#1e3226' }}
+            style={{ background: '#374151' }}
             title="Replace starters with empty slots matching the formation"
           >
             ↺ Reset Formation
@@ -339,7 +339,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
         <button
           onClick={() => addPlayer(false)}
           className="text-xs px-3 py-1 rounded-lg text-gray-300 hover:bg-white/10 transition-colors mt-2"
-          style={{ background: '#1e3226' }}
+          style={{ background: '#374151' }}
         >
           + Add Sub
         </button>

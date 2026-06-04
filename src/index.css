@@ -7,7 +7,7 @@
 }
 
 body {
-  background-color: #253D2C;
+  background-color: #111827;
   color: white;
   font-family: system-ui, -apple-system, sans-serif;
   margin: 0;
@@ -34,9 +34,9 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #2a4432;
+  background: #1f2937;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2E6F40;
+  background: #4b5563;
   border-radius: 3px;
 }
