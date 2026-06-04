@@ -4,7 +4,7 @@ export default function PlayerRow({ player, updatePlayer, deletePlayer }) {
   const up = (field, val) => updatePlayer(player.id, { [field]: val })
 
   return (
-    <tr className="border-t border-white/5 hover:bg-white/5 transition-colors">
+    <tr className="border-t border-white/5 hover:bg-white/[0.06] odd:bg-white/[0.02] transition-colors">
       <td className="px-1 py-1">
         <input
           type="number"
@@ -19,7 +19,8 @@ export default function PlayerRow({ player, updatePlayer, deletePlayer }) {
         <select
           value={player.position}
           onChange={(e) => up('position', e.target.value)}
-          className="bg-gray-700 text-white text-xs rounded px-1 py-0.5 outline-none"
+          className="text-white text-xs rounded px-1 py-0.5 outline-none"
+          style={{ background: 'rgba(55,65,81,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           {POSITIONS.map((p) => <option key={p}>{p}</option>)}
         </select>

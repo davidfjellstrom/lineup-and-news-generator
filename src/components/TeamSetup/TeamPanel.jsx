@@ -4,8 +4,8 @@ import TeamPicker from './TeamPicker'
 import PlayerRow from './PlayerRow'
 import FixturePicker from './FixturePicker'
 
-const thClass = 'px-1 py-1.5 text-left text-xs font-medium text-gray-400 whitespace-nowrap'
-const sectionClass = 'text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 mt-3'
+const thClass = 'px-1 py-1.5 text-left text-xs font-medium text-gray-500 whitespace-nowrap uppercase tracking-wider'
+const sectionClass = 'text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4 flex items-center gap-2'
 
 const VALID_POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
 
@@ -186,11 +186,14 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     <div className="flex-1 min-w-0">
       <div
         className="rounded-xl p-4"
-        style={{ background: '#1f2937', border: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.18)', boxShadow: '0 4px 32px rgba(0,0,0,0.3)' }}
       >
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">
-          {label}
-        </h2>
+        <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #4338ca, #7c3aed)' }} />
+          <h2 className="text-xs font-bold text-gray-300 uppercase tracking-widest">
+            {label}
+          </h2>
+        </div>
 
         {/* AI fetch */}
         <div className="mb-3">
@@ -198,7 +201,16 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
             onClick={fetchSquad}
             disabled={fetching || !team.name.trim() || (matchMode === 'match' && !selectedFixture)}
             className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40"
-            style={{ background: fetching ? '#374151' : matchMode === 'match' ? '#15803d' : '#92400e' }}
+            style={{
+              background: fetching
+                ? '#374151'
+                : matchMode === 'match'
+                  ? 'linear-gradient(135deg, #15803d, #166534)'
+                  : 'linear-gradient(135deg, #4338ca, #7c3aed)',
+              boxShadow: fetching ? 'none' : matchMode === 'match'
+                ? '0 0 18px rgba(22,163,74,0.28)'
+                : '0 0 20px rgba(109,40,217,0.22)',
+            }}
             title={
               !team.name.trim() ? 'Välj lag först' :
               matchMode === 'match' && !selectedFixture ? 'Välj en match först' :
@@ -275,7 +287,10 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
         </div>
 
         {/* Starters */}
-        <div className={sectionClass}>Starters ({starters.length}/11)</div>
+        <div className={sectionClass}>
+          <span>Starters ({starters.length}/11)</span>
+          <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -299,8 +314,8 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
         <div className="flex gap-2 mt-2">
           <button
             onClick={() => addPlayer(true)}
-            className="text-xs px-3 py-1 rounded-lg text-white hover:bg-green-700 transition-colors"
-            style={{ background: '#16a34a' }}
+            className="text-xs px-3 py-1 rounded-lg transition-colors hover:bg-indigo-500/10"
+            style={{ background: 'transparent', border: '1px solid rgba(99,102,241,0.5)', color: '#a5b4fc' }}
           >
             + Add Starter
           </button>
@@ -315,7 +330,10 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
         </div>
 
         {/* Substitutes */}
-        <div className={sectionClass + ' mt-4'}>Substitutes ({subs.length})</div>
+        <div className={sectionClass + ' mt-4'}>
+          <span>Substitutes ({subs.length})</span>
+          <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -338,8 +356,8 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
         </div>
         <button
           onClick={() => addPlayer(false)}
-          className="text-xs px-3 py-1 rounded-lg text-gray-300 hover:bg-white/10 transition-colors mt-2"
-          style={{ background: '#374151' }}
+          className="text-xs px-3 py-1 rounded-lg transition-colors hover:bg-indigo-500/10 mt-2"
+          style={{ background: 'transparent', border: '1px solid rgba(99,102,241,0.5)', color: '#a5b4fc' }}
         >
           + Add Sub
         </button>

@@ -131,8 +131,9 @@ export default function App() {
       onClick={() => setView(target)}
       className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
       style={{
-        background: view === target ? '#16a34a' : 'transparent',
+        background: view === target ? 'linear-gradient(135deg, #4338ca, #7c3aed)' : 'transparent',
         color: view === target ? 'white' : '#9ca3af',
+        boxShadow: view === target ? '0 0 14px rgba(109,40,217,0.22)' : 'none',
       }}
     >
       {label}
@@ -140,11 +141,11 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen" style={{ background: '#111827' }}>
+    <div className="min-h-screen" style={{ background: 'radial-gradient(ellipse at 50% 20%, #ffffff 0%, #c4c4c4 100%)' }}>
       {/* ── Header ── */}
       <header
         className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
-        style={{ background: '#1f2937', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: 'linear-gradient(135deg, #221e3a 0%, #1a1730 100%)', borderBottom: '1px solid rgba(99,102,241,0.18)', boxShadow: '0 2px 20px rgba(0,0,0,0.4)' }}
       >
         <div className="flex items-center gap-2">
           <span className="text-lg">⚽</span>
@@ -176,8 +177,9 @@ export default function App() {
               onClick={() => setMatchMode('pre-match')}
               className="px-3 py-1.5 transition-colors"
               style={{
-                background: matchMode === 'pre-match' ? '#854d0e' : 'transparent',
-                color: matchMode === 'pre-match' ? '#fde68a' : '#6b7280',
+                background: matchMode === 'pre-match' ? 'linear-gradient(135deg, #4338ca, #7c3aed)' : 'transparent',
+                color: matchMode === 'pre-match' ? 'white' : '#6b7280',
+                boxShadow: matchMode === 'pre-match' ? '0 0 12px rgba(109,40,217,0.22)' : 'none',
               }}
             >
               Pre-match

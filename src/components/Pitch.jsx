@@ -190,9 +190,9 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
             <div
               className="text-xs font-bold px-2 py-0.5 rounded-full"
               style={{
-                background: matchMode === 'match' ? 'rgba(20,83,45,0.8)' : 'rgba(120,53,15,0.8)',
-                color: matchMode === 'match' ? '#86efac' : '#fde68a',
-                border: `1px solid ${matchMode === 'match' ? '#16a34a' : '#d97706'}`,
+                background: matchMode === 'match' ? 'rgba(20,83,45,0.8)' : 'rgba(194,97,26,0.2)',
+                color: matchMode === 'match' ? '#86efac' : '#fb923c',
+                border: `1px solid ${matchMode === 'match' ? '#16a34a' : 'rgba(251,146,60,0.5)'}`,
               }}
             >
               {matchMode === 'match' ? '● Bekräftad' : '◌ Estimerad'}
