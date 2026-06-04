@@ -61,8 +61,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
   const awayStarters = awayTeam.players.filter((p) => p.isStarter)
-  const homeLines = groupIntoLines(homeStarters, homeTeam.formation)
-  const awayLinesDisplay = [...groupIntoLines(awayStarters, awayTeam.formation)].reverse()
+  const homeLines = groupIntoLines(homeStarters, homeTeam.formation, 'home')
+  const awayLinesDisplay = [...groupIntoLines(awayStarters, awayTeam.formation, 'away')].reverse()
 
   const starterKey = useMemo(
     () => [...homeStarters, ...awayStarters].map((p) => p.id).sort().join(','),
