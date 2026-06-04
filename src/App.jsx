@@ -100,7 +100,7 @@ export default function App() {
       const { default: html2canvas } = await import('html2canvas')
       const canvas = await html2canvas(el, {
         scale: 2,
-        backgroundColor: '#111827',
+        backgroundColor: '#0f1f16',
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -140,7 +140,7 @@ export default function App() {
   )
 
   return (
-    <div className="min-h-screen" style={{ background: '#111827' }}>
+    <div className="min-h-screen" style={{ background: '#0f1f16' }}>
       {/* ── Header ── */}
       <header
         className="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
