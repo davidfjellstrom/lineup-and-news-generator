@@ -256,7 +256,7 @@ Your tasks:
 
 STEP 1 — Transfermarkt stats: Search Transfermarkt's {team} national team page for market values, caps, goals, height, and preferred foot for each player. Also get total squad value, average age, and FIFA world ranking.
 
-STEP 2 — Current clubs: For any player whose current club is unclear, search "[player name] club 2026" on BBC Sport, Sky Sports, or ESPN. Players transfer frequently — verify clubs as of June 2026.
+STEP 2 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026" on BBC Sport, Sky Sports, or ESPN. Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier.
 
 STEP 3 — Starting XI: Based on recent {team} performances reported on Sky Sports, BBC Sport, or ESPN, select the most probable {formation} starting eleven from this squad.
 
