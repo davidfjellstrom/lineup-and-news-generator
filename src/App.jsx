@@ -156,6 +156,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setView('setup')}
+            title="Gå till Setup (hem)"
             className="text-white hidden sm:block hover:opacity-80 transition-opacity"
             style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '1.5rem', fontWeight: 700, fontStyle: 'italic', letterSpacing: '0.07em', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
