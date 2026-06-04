@@ -1,4 +1,5 @@
 import json
+from typing import List, Optional
 
 from lineup import run_with_search, extract_json
 
@@ -15,7 +16,7 @@ _TRUSTED_NEWS_SOURCES = """TRUSTED SOURCES — only use articles from:
 Do NOT use Wikipedia, fan wikis, betting sites, or any source published before January 1, 2026."""
 
 
-def _build_news_prompt(q: str, sources: list[str]) -> str:
+def _build_news_prompt(q: str, sources: List[str]) -> str:
     sources_str = ", ".join(sources) if sources else "BBC Sport, Sky Sports, ESPN, FIFA, UEFA, The Guardian"
     return f"""Today is June 2026. The FIFA World Cup 2026 is currently underway in the USA, Canada, and Mexico.
 
@@ -36,7 +37,7 @@ Return ONLY a valid JSON array where each element has:
 No markdown fences, no extra keys, no explanation — pure JSON array."""
 
 
-def fetch_news(q: str, client, sources: list[str] | None = None) -> dict:
+def fetch_news(q: str, client, sources: Optional[List[str]] = None) -> dict:
     """Fetch football news via Claude web search and return structured articles."""
     text = run_with_search(client, _build_news_prompt(q, sources or []))
     try:
