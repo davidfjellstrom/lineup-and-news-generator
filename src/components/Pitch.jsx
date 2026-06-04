@@ -152,10 +152,10 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
 
   return (
     <div className="px-3 py-4 min-w-0">
-      <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#111827' }}>
+      <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#182628' }}>
 
         {/* Team headers */}
-        <div className="flex items-center justify-between px-5 py-3" style={{ background: '#1f2937' }}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ background: '#1e3330' }}>
           <div>
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide">
               <span>{homeTeam.flag}</span>
@@ -164,7 +164,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={homeTeam.formation}
                 onChange={(e) => onFormationChange('homeTeam', e.target.value)}
                 className="text-sm font-semibold rounded px-1 py-0.5 cursor-pointer"
-                style={{ background: '#14532d', color: '#4ade80', border: 'none', outline: 'none' }}
+                style={{ background: '#1e4a3a', color: '#65ccb8', border: 'none', outline: 'none' }}
               >
                 {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -172,7 +172,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={homeColor}
                 onChange={(e) => pickHomeColor(e.target.value)}
                 className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
-                style={{ background: '#1f2937', color: homeColor, border: `1px solid ${homeColor}`, outline: 'none' }}
+                style={{ background: '#1e3330', color: homeColor, border: `1px solid ${homeColor}`, outline: 'none' }}
               >
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -190,9 +190,9 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
             <div
               className="text-xs font-bold px-2 py-0.5 rounded-full"
               style={{
-                background: matchMode === 'match' ? 'rgba(20,83,45,0.8)' : 'rgba(120,53,15,0.8)',
-                color: matchMode === 'match' ? '#86efac' : '#fde68a',
-                border: `1px solid ${matchMode === 'match' ? '#16a34a' : '#d97706'}`,
+                background: matchMode === 'match' ? 'rgba(29,74,58,0.9)' : 'rgba(22,55,50,0.9)',
+                color: matchMode === 'match' ? '#65ccb8' : '#57ba98',
+                border: `1px solid ${matchMode === 'match' ? '#3b945e' : '#57ba98'}`,
               }}
             >
               {matchMode === 'match' ? '● Bekräftad' : '◌ Estimerad'}
@@ -204,7 +204,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={awayColor}
                 onChange={(e) => pickAwayColor(e.target.value)}
                 className="text-xs rounded px-1 py-0.5 cursor-pointer font-semibold"
-                style={{ background: '#1f2937', color: awayColor, border: `1px solid ${awayColor}`, outline: 'none' }}
+                style={{ background: '#1e3330', color: awayColor, border: `1px solid ${awayColor}`, outline: 'none' }}
               >
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -212,7 +212,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 value={awayTeam.formation}
                 onChange={(e) => onFormationChange('awayTeam', e.target.value)}
                 className="text-sm font-semibold rounded px-1 py-0.5 cursor-pointer"
-                style={{ background: '#14532d', color: '#4ade80', border: 'none', outline: 'none' }}
+                style={{ background: '#1e4a3a', color: '#65ccb8', border: 'none', outline: 'none' }}
               >
                 {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -233,7 +233,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
           ref={pitchRef}
           className="relative"
           style={{
-            background: '#1a6b3c',
+            background: '#3b945e',
             backgroundImage:
               'repeating-linear-gradient(90deg, transparent 0px, transparent 80px, rgba(0,0,0,0.07) 80px, rgba(0,0,0,0.07) 160px)',
             minHeight: 560,
