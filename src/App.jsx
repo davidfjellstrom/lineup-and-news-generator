@@ -154,12 +154,13 @@ export default function App() {
         style={{ background: 'linear-gradient(135deg, #1e1b6e 0%, #4c1994 100%)', borderBottom: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 2px 24px rgba(0,0,0,0.5)' }}
       >
         <div className="flex items-center gap-2">
-          <span
-            className="text-white hidden sm:block"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '1.5rem', fontWeight: 700, fontStyle: 'italic', letterSpacing: '0.07em', lineHeight: 1 }}
+          <button
+            onClick={() => setView('setup')}
+            className="text-white hidden sm:block hover:opacity-80 transition-opacity"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: '1.5rem', fontWeight: 700, fontStyle: 'italic', letterSpacing: '0.07em', lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             LINEUP &amp; NEWS GENERATOR
-          </span>
+          </button>
           <button
             onClick={newMatch}
             className="text-xs px-2 py-1 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
