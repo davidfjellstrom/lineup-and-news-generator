@@ -42,6 +42,8 @@ def fetch_news(q: str, client, sources: Optional[List[str]] = None) -> dict:
     text = run_with_search(client, _build_news_prompt(q, sources or []))
     try:
         articles = extract_json(text)
+        if not isinstance(articles, list):
+            return {"articles": [], "raw": text}
         return {"articles": articles}
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError, ValueError):
         return {"articles": [], "raw": text}

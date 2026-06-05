@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import { WC2026_TEAMS } from '../data/wc2026Teams'
+import TeamPicker from './TeamSetup/TeamPicker'
+
+function teamDisplayName(upperName) {
+  const t = WC2026_TEAMS.find((x) => x.name.toUpperCase() === upperName)
+  return t?.name || upperName
+}
 
 const ALL_SOURCES = ['BBC Sport', 'Sky Sports', 'ESPN', 'FIFA', 'UEFA', 'The Guardian']
 
@@ -123,8 +129,16 @@ function useNewsSearch() {
     try {
       const sp = sources.size > 0 ? `&sources=${encodeURIComponent([...sources].join(','))}` : ''
       const res = await fetch(`/api/news?q=${encodeURIComponent(query)}${sp}`)
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`)
-      setArticles((await res.json()).articles || [])
+      const raw = await res.text()
+      let data = {}
+      try { data = JSON.parse(raw) } catch { /* gateway HTML etc. */ }
+      if (!res.ok) {
+        const detail = data.detail || (raw.includes('timeout') || raw.includes('Timeout')
+          ? 'Sökningen tog för lång tid — försök igen eller välj färre källor'
+          : null)
+        throw new Error(detail || `HTTP ${res.status}`)
+      }
+      setArticles(data.articles || [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -139,23 +153,67 @@ export default function NewsFeed({ match }) {
   const matchSearch = useNewsSearch()
   const teamSearch = useNewsSearch()
   const [customQuery, setCustomQuery] = useState('')
+  const [newsHome, setNewsHome] = useState(() => ({
+    name: match?.homeTeam?.name || '',
+    flag: match?.homeTeam?.flag || '',
+  }))
+  const [newsAway, setNewsAway] = useState(() => ({
+    name: match?.awayTeam?.name || '',
+    flag: match?.awayTeam?.flag || '',
+  }))
 
-  const homeTeam = match?.homeTeam
-  const awayTeam = match?.awayTeam
-  const hasMatch = homeTeam?.name && awayTeam?.name
+  const setupHome = match?.homeTeam
+  const setupAway = match?.awayTeam
+  const hasSetupMatch = setupHome?.name && setupAway?.name
+
+  const homeLabel = teamDisplayName(newsHome.name)
+  const awayLabel = teamDisplayName(newsAway.name)
+  const matchReady = newsHome.name && newsAway.name && newsHome.name !== newsAway.name
+  const matchLabel = matchReady ? `${homeLabel} vs ${awayLabel}` : ''
+  const matchQuery = matchReady ? `${homeLabel} vs ${awayLabel} World Cup 2026` : ''
+
+  function useSetupMatch() {
+    setNewsHome({ name: setupHome.name, flag: setupHome.flag })
+    setNewsAway({ name: setupAway.name, flag: setupAway.flag })
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-6">
 
-      {/* ── Section 1: Aktuell match ── */}
-      {hasMatch && (
-        <div className="rounded-xl p-4" style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.18)' }}>
-          <SectionHeader title="Aktuell match" />
+      {/* ── Section 1: Välj match ── */}
+      <div className="rounded-xl p-4" style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.18)' }}>
+        <SectionHeader title="Välj match" />
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+          <TeamPicker
+            value={newsHome.name}
+            flag={newsHome.flag}
+            onChange={setNewsHome}
+          />
+          <span className="text-gray-500 text-sm font-semibold text-center shrink-0">vs</span>
+          <TeamPicker
+            value={newsAway.name}
+            flag={newsAway.flag}
+            onChange={setNewsAway}
+          />
+        </div>
+
+        {hasSetupMatch && (
+          <button
+            type="button"
+            onClick={useSetupMatch}
+            className="text-xs text-indigo-300 hover:text-white mb-4 transition-colors"
+          >
+            Använd match från Setup ({teamDisplayName(setupHome.name)} vs {teamDisplayName(setupAway.name)})
+          </button>
+        )}
+
+        {matchReady && (
           <div className="flex flex-wrap gap-2 mb-4">
             {[
-              { flag: homeTeam.flag, label: homeTeam.name, query: `${homeTeam.name} national football team World Cup 2026` },
-              { label: 'vs', query: `${homeTeam.name} vs ${awayTeam.name} World Cup 2026` },
-              { flag: awayTeam.flag, label: awayTeam.name, query: `${awayTeam.name} national football team World Cup 2026` },
+              { flag: newsHome.flag, label: homeLabel, query: `${homeLabel} national football team World Cup 2026` },
+              { label: 'vs', query: matchQuery },
+              { flag: newsAway.flag, label: awayLabel, query: `${awayLabel} national football team World Cup 2026` },
             ].map(({ flag, label, query }) => (
               <button key={label} onClick={() => matchSearch.search(query, label)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
@@ -170,18 +228,23 @@ export default function NewsFeed({ match }) {
               </button>
             ))}
           </div>
-          <SourceFilters selected={matchSearch.sources} onToggle={matchSearch.toggleSource} onToggleAll={matchSearch.toggleAll} />
-          <button
-            onClick={() => matchSearch.search(`${homeTeam.name} vs ${awayTeam.name} World Cup 2026`, `${homeTeam.name} vs ${awayTeam.name}`)}
-            disabled={matchSearch.loading}
-            className="mt-4 w-full py-2 rounded-lg text-sm font-bold text-white disabled:opacity-40 transition-opacity hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', boxShadow: '0 0 14px rgba(109,40,217,0.22)' }}
-          >
-            {matchSearch.loading ? 'Hämtar…' : `Sök nyheter om ${homeTeam.name} vs ${awayTeam.name}`}
-          </button>
-          <ResultsBlock {...matchSearch} />
-        </div>
-      )}
+        )}
+
+        <SourceFilters selected={matchSearch.sources} onToggle={matchSearch.toggleSource} onToggleAll={matchSearch.toggleAll} />
+        <button
+          onClick={() => matchSearch.search(matchQuery, matchLabel)}
+          disabled={matchSearch.loading || !matchReady}
+          className="mt-4 w-full py-2 rounded-lg text-sm font-bold text-white disabled:opacity-40 transition-opacity hover:opacity-90"
+          style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', boxShadow: '0 0 14px rgba(109,40,217,0.22)' }}
+        >
+          {matchSearch.loading
+            ? 'Hämtar…'
+            : matchReady
+              ? `Sök nyheter om ${matchLabel}`
+              : 'Välj hemmalag och bortalag'}
+        </button>
+        <ResultsBlock {...matchSearch} />
+      </div>
 
       {/* ── Section 2: Lag & ämnen ── */}
       <div className="rounded-xl p-4" style={{ background: '#221e3a', border: '1px solid rgba(99,102,241,0.18)' }}>
