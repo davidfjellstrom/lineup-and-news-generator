@@ -138,7 +138,8 @@ function useNewsSearch() {
           : null)
         throw new Error(detail || `HTTP ${res.status}`)
       }
-      setArticles(data.articles || [])
+      const articles = (data.articles || []).sort((a, b) => (a.daysAgo ?? 999) - (b.daysAgo ?? 999))
+      setArticles(articles)
     } catch (err) {
       setError(err.message)
     } finally {

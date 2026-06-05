@@ -32,9 +32,10 @@ Do NOT use Wikipedia, fan wikis, betting sites, or any source not listed above.
 Include ALL articles you find that meet the above criteria — do not limit the number.
 If no articles are found, return an empty JSON array.
 
-Return ONLY a valid JSON array where each element has:
+Return ONLY a valid JSON array sorted by recency — newest article first, oldest last. Each element has:
 - source: news outlet name (e.g. "BBC Sport", "ESPN", "Sky Sports")
 - time: relative age string (e.g. "2 hours ago", "Yesterday", "3 days ago")
+- daysAgo: integer number of days since publication (0 = today, 1 = yesterday, etc.)
 - title: article headline in the original language or English
 - summary: 1–2 sentence plain-text summary in Swedish
 - url: article URL
