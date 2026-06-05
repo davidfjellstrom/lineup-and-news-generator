@@ -17,15 +17,20 @@ Do NOT use Wikipedia, fan wikis, betting sites, or any source published before J
 
 
 def _build_news_prompt(q: str, sources: List[str]) -> str:
+    from datetime import date, timedelta
+    today = date.today()
+    cutoff = today - timedelta(days=60)
     sources_str = ", ".join(sources) if sources else "BBC Sport, Sky Sports, ESPN, FIFA, UEFA, The Guardian"
-    return f"""Today is June 2026. The FIFA World Cup 2026 is currently underway in the USA, Canada, and Mexico.
+    return f"""Today is {today.strftime('%B %d, %Y')}. The FIFA World Cup 2026 is currently underway in the USA, Canada, and Mexico.
 
-Search for the latest football news about: {q}
+Search for football news about: {q}
 
-TRUSTED SOURCES — only use articles from: {sources_str}
-Do NOT use Wikipedia, fan wikis, betting sites, or any source published before January 1, 2026.
+TRUSTED SOURCES — only include articles from: {sources_str}
+RECENCY — only include articles published on or after {cutoff.strftime('%B %d, %Y')} (last 60 days). Exclude anything older.
+Do NOT use Wikipedia, fan wikis, betting sites, or any source not listed above.
 
-Find 5–8 recent articles. If no relevant articles are found from the specified sources, return an empty JSON array.
+Include ALL articles you find that meet the above criteria — do not limit the number.
+If no articles are found, return an empty JSON array.
 
 Return ONLY a valid JSON array where each element has:
 - source: news outlet name (e.g. "BBC Sport", "ESPN", "Sky Sports")
