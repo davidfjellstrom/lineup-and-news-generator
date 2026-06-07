@@ -26,16 +26,16 @@ const Silhouette = ({ size }) => (
 )
 
 export default function PlayerCard({ player, compact = false, onNoteChange, onPhotoChange, isTop5 = false, teamColor = '#ffffff' }) {
-  const photoSize = compact ? 38 : 56
-  const badgeSize = compact ? 16 : 22
-  const logoBadgeSize = compact ? 22 : 30
+  const photoSize = compact ? 46 : 56
+  const badgeSize = compact ? 19 : 22
+  const logoBadgeSize = compact ? 26 : 30
   const [dragOver, setDragOver] = useState(false)
   const fontSize = {
-    first: compact ? 8 : 10,
-    last: compact ? 9 : 13,
-    club: compact ? 7 : 9,
+    first: compact ? 9 : 10,
+    last: compact ? 11 : 13,
+    club: compact ? 8 : 9,
     note: 9,
-    stats: compact ? 7 : 10,
+    stats: compact ? 9 : 10,
   }
   const notesRef = useRef(null)
 
@@ -60,7 +60,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
   return (
     <div
       className="flex flex-col items-center select-none"
-      style={{ maxWidth: compact ? 72 : 104 }}
+      style={{ maxWidth: compact ? 88 : 104 }}
     >
       {/* Photo area with badges */}
       <div
