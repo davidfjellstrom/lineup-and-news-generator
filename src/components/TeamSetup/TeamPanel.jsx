@@ -180,6 +180,15 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     } catch {
       alert('Kunde inte spara — webbläsarens lagring kan vara full.')
     }
+
+    const fileName = name.replace(/\.json$/i, '') + '.json'
+    const blob = new Blob([JSON.stringify({ ...team, savedPositions }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function loadTeam(name) {

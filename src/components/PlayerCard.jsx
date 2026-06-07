@@ -188,7 +188,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
               <span style={{ color: 'rgba(255,255,255,0.25)' }}> · </span>
             )}
             {!compact && isTop5 && player.marketValue && (
-              <span style={{ color: '#4ade80' }}>€{player.marketValue}M</span>
+              <span className="font-bold" style={{ color: '#4ade80' }}>€{player.marketValue}M</span>
             )}
           </div>
         )}
