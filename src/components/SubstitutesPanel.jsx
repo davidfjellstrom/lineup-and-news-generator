@@ -24,7 +24,7 @@ function TeamSubs({ team, isDropTarget, onSubDragStart, onNoteChange, onPhotoCha
       </div>
       <div className="flex flex-col gap-3">
         {groups.map(({ pos, players }) => (
-          <div key={pos} className="flex items-center gap-2 min-h-[64px]">
+          <div key={pos} className="flex items-center gap-2 min-h-[80px]">
             <span
               className="text-xs font-bold px-1.5 py-0.5 rounded self-start mt-1"
               style={{
