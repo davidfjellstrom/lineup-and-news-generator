@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { FORMATIONS, getEmptyStartersForFormation } from '../../utils/formations'
 import TeamPicker from './TeamPicker'
 import PlayerRow from './PlayerRow'
@@ -6,6 +6,12 @@ import FixturePicker from './FixturePicker'
 
 const thClass = 'px-1 py-1.5 text-left text-xs font-medium text-gray-500 whitespace-nowrap uppercase tracking-wider'
 const sectionClass = 'text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4 flex items-center gap-2'
+
+const SAVED_TEAMS_KEY = 'wc2026-saved-teams'
+
+function getSavedTeams() {
+  try { return JSON.parse(localStorage.getItem(SAVED_TEAMS_KEY) || '{}') } catch { return {} }
+}
 
 const VALID_POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
 
@@ -31,7 +37,7 @@ function toPlayer(p, isStarter) {
   }
 }
 
-export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId }) {
+export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId, positions, onPositionsChange }) {
   const label = side === 'homeTeam' ? 'Home Team' : 'Away Team'
   const starters = team.players.filter((p) => p.isStarter)
   const subs = team.players.filter((p) => !p.isStarter)
@@ -39,6 +45,9 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
   const [fetchError, setFetchError] = useState(null)
   const [source, setSource] = useState(null)
   const [selectedFixture, setSelectedFixture] = useState(null)
+  const [savedTeams, setSavedTeams] = useState(() => getSavedTeams())
+  const [selectedSave, setSelectedSave] = useState('')
+  const savedTeamNames = useMemo(() => Object.keys(savedTeams).sort(), [savedTeams])
 
   async function fetchSquad() {
     if (!team.name.trim()) return
@@ -148,33 +157,52 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     const defaultName = team.name
       ? team.name.charAt(0) + team.name.slice(1).toLowerCase()
       : 'lag'
-    const input = window.prompt('Döp filen:', defaultName)
+    const input = window.prompt('Döp till:', defaultName)
     if (input === null) return
-    const fileName = (input.trim() || defaultName).replace(/\.json$/i, '') + '.json'
-    const blob = new Blob([JSON.stringify(team, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName
-    a.click()
-    URL.revokeObjectURL(url)
+    const name = input.trim() || defaultName
+
+    const all = getSavedTeams()
+    if (all[name] && !window.confirm(`"${name}" finns redan. Skriva över?`)) return
+
+    const savedPositions = {}
+    if (positions) {
+      team.players.filter((p) => p.isStarter).forEach((p) => {
+        if (positions[p.id]) savedPositions[String(p.number)] = positions[p.id]
+      })
+    }
+
+    all[name] = { ...team, savedPositions }
+    try {
+      localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(all))
+      const refreshed = getSavedTeams()
+      setSavedTeams(refreshed)
+      setSelectedSave(name)
+    } catch {
+      alert('Kunde inte spara — webbläsarens lagring kan vara full.')
+    }
   }
 
-  function loadTeam(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const loaded = JSON.parse(ev.target.result)
-        const players = (loaded.players ?? []).map((p) => ({ ...p, id: crypto.randomUUID() }))
-        setMatch((m) => ({ ...m, [side]: { ...loaded, players } }))
-      } catch {
-        alert('Filen kunde inte läsas — kontrollera att det är en giltig lagfil (.json).')
-      }
+  function loadTeam(name) {
+    if (!name) return
+    const all = getSavedTeams()
+    const saved = all[name]
+    if (!saved) return
+
+    const { savedPositions = {}, ...teamData } = saved
+    const players = (teamData.players ?? []).map((p) => ({ ...p, id: crypto.randomUUID() }))
+
+    if (Object.keys(savedPositions).length > 0 && onPositionsChange) {
+      onPositionsChange((prev) => {
+        const next = { ...prev }
+        players.forEach((p) => {
+          const pos = savedPositions[String(p.number)]
+          if (pos) next[p.id] = pos
+        })
+        return next
+      })
     }
-    reader.readAsText(file)
-    e.target.value = ''
+
+    setMatch((m) => ({ ...m, [side]: { ...teamData, players } }))
   }
 
   function handleFixtureSelected(fixture) {
@@ -237,19 +265,34 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
               disabled={team.players.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-40 hover:brightness-110"
               style={{ background: '#1d4ed8' }}
-              title="Spara laget som en fil"
+              title="Spara laget i webbläsaren"
             >
               💾 Spara lag
             </button>
-            <label
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white cursor-pointer transition-colors hover:brightness-110"
-              style={{ background: '#374151' }}
-              title="Ladda ett sparat lag från fil"
-            >
-              📂 Ladda lag
-              <input type="file" accept=".json" className="hidden" onChange={loadTeam} />
-            </label>
           </div>
+          {savedTeamNames.length > 0 && (
+            <div className="flex gap-2 mt-2 items-center">
+              <select
+                value={selectedSave}
+                onChange={(e) => setSelectedSave(e.target.value)}
+                className="flex-1 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{ background: '#374151', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <option value="">Välj sparat lag…</option>
+                {savedTeamNames.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => loadTeam(selectedSave)}
+                disabled={!selectedSave}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors disabled:opacity-40 hover:brightness-110"
+                style={{ background: '#374151' }}
+              >
+                📂 Ladda
+              </button>
+            </div>
+          )}
         </div>
 
         {matchMode === 'match' && (

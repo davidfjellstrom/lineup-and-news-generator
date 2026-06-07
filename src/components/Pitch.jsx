@@ -56,7 +56,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange }, ref) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -81,18 +81,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
     ;[...homeTeam.players, ...awayTeam.players].forEach((p) => { map[p.id] = p })
     return map
   }, [homeTeam.players, awayTeam.players])
-
-  const [positions, setPositionsState] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wc2026-positions') || '{}') } catch { return {} }
-  })
-
-  function setPositions(updater) {
-    setPositionsState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      try { localStorage.setItem('wc2026-positions', JSON.stringify(next)) } catch {}
-      return next
-    })
-  }
 
   const [homeColor, setHomeColor] = useState(
     () => localStorage.getItem('wc2026-homeColor') || '#60a5fa'
