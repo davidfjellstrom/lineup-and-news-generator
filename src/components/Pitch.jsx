@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
 import PlayerCard from './PlayerCard'
 import SubstitutesPanel from './SubstitutesPanel'
 import { groupIntoLines, FORMATIONS } from '../utils/formations'
@@ -107,8 +107,14 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
     })
   }, [starterKey])
 
-  // When formation changes: reset all positions to match the new layout.
+  // When formation changes: reset positions to match new layout.
+  // Skip on initial mount — localStorage-loaded positions should be preserved on refresh.
+  const isInitialFormationMount = useRef(true)
   useEffect(() => {
+    if (isInitialFormationMount.current) {
+      isInitialFormationMount.current = false
+      return
+    }
     if (!homeStarters.length && !awayStarters.length) return
     const defaults = computePositions(homeLines, awayLinesDisplay)
     setPositions(
