@@ -22,6 +22,9 @@ function loadSaved() {
 
 export default function App() {
   const [match, setMatch] = useState(() => loadSaved() || emptyMatch)
+  const [positions, setPositions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wc2026-positions') || '{}') } catch { return {} }
+  })
   const VALID_VIEWS = ['setup', 'pitch', 'news']
   const hashView = window.location.hash.replace('#', '')
   const [view, setView] = useState(VALID_VIEWS.includes(hashView) ? hashView : 'setup')
@@ -42,6 +45,10 @@ export default function App() {
       // localStorage kan vara otillgänglig (t.ex. iOS privat läge med full kvot)
     }
   }, [match])
+
+  useEffect(() => {
+    try { localStorage.setItem('wc2026-positions', JSON.stringify(positions)) } catch {}
+  }, [positions])
 
   function updatePlayerStarter(teamKey, playerId, isStarter) {
     setMatch((m) => ({
@@ -128,6 +135,7 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem('wc2026-positions')
     setMatch({ ...emptyMatch, homeTeam: { ...emptyTeam }, awayTeam: { ...emptyTeam } })
+    setPositions({})
     setView('setup')
   }
 
@@ -234,18 +242,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Match info bar (pitch view) ── */}
-      {view === 'pitch' && (
-        <div
-          className="flex items-center justify-center gap-3 px-4 py-2 text-xs font-medium tracking-wider"
-          style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', color: 'rgba(255,255,255,0.8)', borderTop: '0.5px solid #ffffff', borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <span>{match.homeTeam.flag} {match.homeTeam.name}</span>
-          <span style={{ color: 'rgba(255,255,255,0.35)' }}>vs</span>
-          <span>{match.awayTeam.flag} {match.awayTeam.name}</span>
-        </div>
-      )}
-
       {/* ── Views ── */}
       <main>
         {view === 'setup' && (
@@ -254,10 +250,12 @@ export default function App() {
             setMatch={setMatch}
             matchMode={matchMode}
             onViewLineup={() => setView('pitch')}
+            positions={positions}
+            setPositions={setPositions}
           />
         )}
         <div style={{ display: view === 'pitch' ? undefined : 'none' }}>
-          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} />
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} positions={positions} setPositions={setPositions} />
         </div>
         {view === 'news' && <NewsFeed match={match} />}
       </main>

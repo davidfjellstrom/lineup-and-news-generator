@@ -73,7 +73,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
           style={{
             width: badgeSize,
             height: badgeSize,
-            fontSize: badgeSize * 0.5,
+            fontSize: badgeSize * 0.625,
             top: 0,
             left: 0,
             border: `1px solid ${teamColor}`,
@@ -175,23 +175,17 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
           </div>
         )}
 
-        {/* Caps / goals */}
-        {!compact && player.caps > 0 && (
+        {/* Caps/goals and market value on same row */}
+        {!compact && (player.caps > 0 || (isTop5 && player.marketValue)) && (
           <div
             className="text-center"
-            style={{ fontSize: fontSize.stats, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}
-          >
-            {player.caps}/{player.goals ?? 0}
-          </div>
-        )}
-
-        {/* Market value — only for top 5 */}
-        {!compact && isTop5 && player.marketValue && (
-          <div
-            className="text-center font-semibold"
             style={{ fontSize: fontSize.stats, color: '#4ade80', marginTop: 1 }}
           >
-            €{player.marketValue}M
+            {player.caps > 0 && <span>{player.caps}/{player.goals ?? 0}</span>}
+            {player.caps > 0 && isTop5 && player.marketValue && (
+              <span style={{ color: 'rgba(255,255,255,0.25)' }}> · </span>
+            )}
+            {isTop5 && player.marketValue && <span>€{player.marketValue}M</span>}
           </div>
         )}
       </div>
