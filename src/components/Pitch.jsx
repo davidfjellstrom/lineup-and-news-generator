@@ -139,7 +139,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
   const allStarters = [...homeStarters, ...awayStarters]
 
   return (
-    <div className="px-3 py-4 min-w-0">
+    <div className="px-1 py-2 min-w-0">
       <div id="pitch-export" className="rounded-xl overflow-hidden" style={{ background: '#0f0c29' }}>
 
         {/* Team headers */}
@@ -224,7 +224,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
             background: '#1a6b3c',
             backgroundImage:
               'repeating-linear-gradient(90deg, transparent 0px, transparent 80px, rgba(0,0,0,0.07) 80px, rgba(0,0,0,0.07) 160px)',
-            minHeight: 560,
+            minHeight: 'max(560px, calc(100vh - 230px))',
             border: '2px solid rgba(255,255,255,0.15)',
             userSelect: 'none',
             outline: ghost ? '2px solid rgba(255,255,255,0.25)' : 'none',
