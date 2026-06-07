@@ -179,13 +179,17 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
         {!compact && (player.caps > 0 || (isTop5 && player.marketValue)) && (
           <div
             className="text-center"
-            style={{ fontSize: fontSize.stats, color: '#4ade80', marginTop: 1 }}
+            style={{ fontSize: fontSize.stats, marginTop: 1 }}
           >
-            {player.caps > 0 && <span>{player.caps}/{player.goals ?? 0}</span>}
+            {player.caps > 0 && (
+              <span style={{ color: 'rgba(255,255,255,0.75)' }}>{player.caps}/{player.goals ?? 0}</span>
+            )}
             {player.caps > 0 && isTop5 && player.marketValue && (
               <span style={{ color: 'rgba(255,255,255,0.25)' }}> · </span>
             )}
-            {isTop5 && player.marketValue && <span>€{player.marketValue}M</span>}
+            {isTop5 && player.marketValue && (
+              <span style={{ color: '#4ade80' }}>€{player.marketValue}M</span>
+            )}
           </div>
         )}
       </div>
