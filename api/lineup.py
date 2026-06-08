@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from logos import get_club_logo_url
 from photos import _af_get, _ascii_upper, _fetch_team_player_photos, _search_player_photo_af
+from transfermarkt import apply_tm_stats, fetch_squad_safe, squad_base_from_tm
 
 log = logging.getLogger("lineup-api")
 
@@ -148,72 +149,67 @@ def _fetch_squad_af(team_name: str) -> list[dict] | None:
 
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
-_TRUSTED_SOURCES = """TRUSTED SOURCES — only use information from:
-- FIFA.com — official squad registrations, jersey numbers, FIFA rankings
-- Transfermarkt (transfermarkt.com) — market values, caps, goals, player stats
+_TRUSTED_SOURCES_XI = """TRUSTED SOURCES — for squad lists and starting XI only:
+- FIFA.com — official squad registrations and jersey numbers
 - Sky Sports (skysports.com) — pre-match team news, injury updates, probable XIs
 - BBC Sport (bbc.com/sport) — match news and lineup reporting
 - ESPN (espn.com) — international football coverage
-- Official national federation websites (e.g. fa.com, fff.fr, dfb.de) — primary source for squad announcements and press conferences
+- Official national federation websites (e.g. fa.com, fff.fr, dfb.de)
+
+Player statistics, market values, and club data are filled programmatically from Transfermarkt — do NOT search for them.
 
 Do NOT use Wikipedia, fan wikis, betting sites, or any source published before January 1, 2026."""
 
+_ENRICHMENT_PLAYER_SCHEMA = """Each player has:
+- lastName: UPPERCASE — use the exact spelling from the squad list above (preserve special characters like Ø, Æ, Å)
+- firstName: full first name in UPPERCASE — never use initials or abbreviations (if the squad list shows "E." expand it to the full name, e.g. "ERLING")
+- number: jersey number (integer)
+- position: GK/DEF/MID/FWD
+- positionLabel: specific role, e.g. "CB", "LB", "LW", "CDM", "CM", "CAM", "ST"
 
-def _build_lineup_prompt(team: str, formation: str, mode: str) -> str:
-    player_schema = f"""Each player (in both arrays) has:
+Do NOT include age, height, foot, caps, goals, marketValue, clubName, clubCountry, or clubSlug — those are filled programmatically from Transfermarkt."""
+
+_CLAUDE_ONLY_PLAYER_SCHEMA = """Each player (in both arrays) has:
 - number: official jersey number as registered with FIFA (integer)
 - firstName: first name in UPPERCASE
 - lastName: last name / surname in UPPERCASE
-- position: one of GK, DEF, MID, FWD  (used for formation grouping)
-- positionLabel: specific position for display, e.g. "GK", "CB", "LB", "RB", "LWB", "RWB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "SS", "CF", "ST"
-- age: current age in years (integer)
-- height: height in cm (integer, e.g. 189)
-- foot: preferred foot in Swedish — "Hö" (right), "Vä" (left), or "Båda" (both)
-- caps: number of official senior international appearances for this national team (integer, 0 if debut/unknown)
-- goals: number of senior international goals for this national team (integer, 0 if none)
-- marketValue: market value in millions EUR from Transfermarkt (number e.g. 65.0, or null if not found)
-- clubName: current club name in English (e.g. "Arsenal", "Bayern Munich", "Real Madrid")
-- clubCountry: lowercase country where the CLUB plays (not the national team), e.g. "england", "germany", "spain", "italy", "france", "sweden", "portugal", "netherlands", "turkey", "saudi-arabia"
-- clubSlug: club's slug on football-logos.cc — lowercase with hyphens, no accents. Examples: "arsenal", "fc-bayern-munchen", "atletico-madrid", "aik", "mjallby-aif", "al-nassr". Derive it from the club's native name if not English (e.g. Bayern Munich → "fc-bayern-munchen")"""
+- position: one of GK, DEF, MID, FWD
+- positionLabel: specific position for display, e.g. "GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "ST"
 
+Do NOT include age, height, foot, caps, goals, marketValue, clubName, clubCountry, or clubSlug — those are filled programmatically from Transfermarkt."""
+
+
+def _build_claude_only_prompt(team: str, formation: str, mode: str) -> str:
+    """Prompt when neither API-Football nor TM provided a squad list — Claude finds the roster."""
     json_shape = f"""Return ONLY a valid JSON object with these exact keys:
 - flag: the flag emoji for {team}'s country (e.g. "🇸🇪" for Sweden)
 - coach: head coach full name in UPPERCASE
-- fifaRanking: current FIFA world ranking (integer, e.g. 38)
-- avgAge: average age of all squad members listed (number rounded to 1 decimal, e.g. 27.4)
-- squadValue: total squad market value in millions EUR from Transfermarkt (number, e.g. 435)
-- source: the name and URL of the source where the lineup was found (e.g. "UEFA.com – https://...")
+- source: the name and URL of the source where the squad/lineup was found
 - starters: array of exactly 11 starting players — MUST include exactly 1 GK
-- substitutes: array of ALL remaining registered squad members not in the starting XI (typically 12–15 players for a 23–26 man squad — include everyone)
+- substitutes: array of ALL remaining registered squad members not in the starting XI
 
-{player_schema}
+{_CLAUDE_ONLY_PLAYER_SCHEMA}
 
 No markdown fences, no explanation — pure JSON object."""
 
     if mode == "match":
         return f"""Today is June 2026. Search for the OFFICIALLY RELEASED starting lineup for {team} in their next or most recent World Cup 2026 match.
 
-{_TRUSTED_SOURCES}
+{_TRUSTED_SOURCES_XI}
 
 Search FIFA.com, the team's official federation site, and major outlets (BBC Sport, ESPN, Sky Sports) for the confirmed lineup that was released approximately 1 hour before kickoff.
 
 Find the REAL officially assigned jersey numbers — do not invent sequential numbers.
 
-For each player's clubName: verify their CURRENT club as of June 2026 — players may have transferred since last season.
-
 {json_shape}"""
-    else:
-        return f"""Today is June 2026. You must find accurate, up-to-date information — do not rely on training data or cached knowledge.
 
-{_TRUSTED_SOURCES}
+    return f"""Today is June 2026. You must find accurate, up-to-date information — do not rely on training data or cached knowledge.
+
+{_TRUSTED_SOURCES_XI}
 
 STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squad registration. This is the authoritative source for jersey numbers and selected players.
 
-STEP 2 — Player stats: Search Transfermarkt's {team} national team page for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
-
-STEP 3 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026". Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier. If a player's current club is unclear, search explicitly before filling in clubName.
-
-STEP 4 — Likely XI: Based on recent {team} matches and current squad fitness, determine the most probable starting eleven.
+STEP 2 — Likely XI: Based on recent {team} matches, select the most probable {formation} starting eleven from that squad.
 
 {json_shape}"""
 
@@ -221,7 +217,7 @@ STEP 4 — Likely XI: Based on recent {team} matches and current squad fitness, 
 def _build_enrichment_prompt(team: str, formation: str, squad: list[dict]) -> str:
     """
     Prompt for the hybrid path: the squad is already known from API-Football.
-    Claude's job is to enrich with stats and select the starting XI — not to find players.
+    Claude selects the starting XI and position labels — stats and clubs come from TM.
     """
     squad_lines = "\n".join(
         f"- {p['firstName']} {p['lastName']} ({p['position']})"
@@ -229,50 +225,27 @@ def _build_enrichment_prompt(team: str, formation: str, squad: list[dict]) -> st
         for p in squad
     )
 
-    player_schema = """Each player has:
-- lastName: UPPERCASE — use the exact spelling from the squad list above (preserve special characters like Ø, Æ, Å)
-- firstName: full first name in UPPERCASE — never use initials or abbreviations (if the squad list shows "E." expand it to the full name, e.g. "ERLING")
-- number: jersey number (integer)
-- position: GK/DEF/MID/FWD
-- positionLabel: specific role, e.g. "CB", "LB", "LW", "CDM", "CM", "CAM", "ST"
-- age: integer
-- height: integer (cm)
-- foot: preferred foot in Swedish — "Hö" (right), "Vä" (left), or "Båda" (both)
-- caps: senior international appearances for this national team (integer)
-- goals: senior international goals for this national team (integer)
-- marketValue: market value in millions EUR from Transfermarkt (float or null)
-- clubName: current club in English
-- clubCountry: lowercase country where the club plays
-- clubSlug: club slug on football-logos.cc (lowercase, hyphens, no accents)"""
-
     return f"""Today is June 2026.
 
 {team}'s WC 2026 squad is already confirmed — do NOT search for who is in the squad.
 
-{_TRUSTED_SOURCES}
+{_TRUSTED_SOURCES_XI}
 
 CONFIRMED SQUAD ({len(squad)} players):
 {squad_lines}
 
-Your tasks:
+Your task:
 
-STEP 1 — Transfermarkt stats: Search Transfermarkt's {team} national team page for market values, caps, goals, height, and preferred foot for each player. Also get total squad value, average age, and FIFA world ranking.
-
-STEP 2 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026" on BBC Sport, Sky Sports, or ESPN. Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier.
-
-STEP 3 — Starting XI: Based on recent {team} performances reported on Sky Sports, BBC Sport, or ESPN, select the most probable {formation} starting eleven from this squad.
+Select the most probable {formation} starting eleven from this squad, based on recent {team} performances reported on Sky Sports, BBC Sport, or ESPN.
 
 Return ONLY a valid JSON object:
 - flag: flag emoji for {team}
-- coach: head coach full name UPPERCASE
-- fifaRanking: integer
-- avgAge: float (1 decimal)
-- squadValue: float (millions EUR)
-- source: source name and URL
+- coach: head coach full name UPPERCASE (fallback only — filled from Transfermarkt when available)
+- source: source name and URL for your starting XI selection
 - starters: array of exactly 11 players — MUST include exactly 1 GK
 - substitutes: array of ALL remaining squad members (include everyone not in starters)
 
-{player_schema}
+{_ENRICHMENT_PLAYER_SCHEMA}
 
 No markdown fences, no explanation — pure JSON object."""
 
@@ -304,8 +277,8 @@ def _name_tokens(first: str, last: str) -> frozenset[str]:
 
 def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dict:
     """
-    Combine API-Football squad data (authoritative player list and photos)
-    with Claude's enrichment (stats, position labels, starting XI selection).
+    Combine a known squad (API-Football or Transfermarkt) with Claude's XI selection
+    and position labels. Stats and clubs are applied afterward via apply_tm_stats().
 
     Matching strategy (in order of priority):
     1. first-initial + last name  ('V_JOHANSSON') — handles same-surname collisions
@@ -360,17 +333,17 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
             "positionLabel": claude_player.get("positionLabel", ""),
             # Photo: AF provides a current-season photo; Claude may have one too
             "photo": af.get("photo") or claude_player.get("photo", ""),
-            # Stats: all from Claude (AF squad endpoint has no national team stats)
+            # Stats: placeholders until apply_tm_stats() overlays Transfermarkt data
             "age":         claude_player.get("age") or af.get("age"),
             "height":      claude_player.get("height"),
             "foot":        claude_player.get("foot"),
             "caps":        claude_player.get("caps"),
             "goals":       claude_player.get("goals"),
             "marketValue": claude_player.get("marketValue"),
-            # Club: Claude is more reliable here (verifies via web search)
-            "clubName":    claude_player.get("clubName", ""),
-            "clubCountry": claude_player.get("clubCountry", ""),
-            "clubSlug":    claude_player.get("clubSlug", ""),
+            # Club: filled by apply_tm_stats() after merge
+            "clubName":    "",
+            "clubCountry": "",
+            "clubSlug":    "",
             "isStarter": is_starter,
             "notes": "",
         }
@@ -389,26 +362,26 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
         af_tokens = _name_tokens(af_p.get("firstName", ""), af_p["lastName"])
         if af_tokens & accounted_tokens:
             continue  # At least one name token matched — player already present
-            log.info("  + AF-spelare saknas i Claude-svar, läggs till: %s", af_p["lastName"])
-            substitutes.append({
-                "firstName":   af_p["firstName"],
-                "lastName":    af_p["lastName"],
-                "number":      af_p.get("number") or 0,
-                "position":    af_p["position"],
-                "positionLabel": "",
-                "photo":       af_p.get("photo", ""),
-                "age":         af_p.get("age"),
-                "height":      None,
-                "foot":        None,
-                "caps":        None,
-                "goals":       None,
-                "marketValue": None,
-                "clubName":    "",
-                "clubCountry": "",
-                "clubSlug":    "",
-                "isStarter":   False,
-                "notes":       "",
-            })
+        log.info("  + AF-spelare saknas i Claude-svar, läggs till: %s", af_p["lastName"])
+        substitutes.append({
+            "firstName":   af_p["firstName"],
+            "lastName":    af_p["lastName"],
+            "number":      af_p.get("number") or 0,
+            "position":    af_p["position"],
+            "positionLabel": "",
+            "photo":       af_p.get("photo", ""),
+            "age":         af_p.get("age"),
+            "height":      None,
+            "foot":        None,
+            "caps":        None,
+            "goals":       None,
+            "marketValue": None,
+            "clubName":    "",
+            "clubCountry": "",
+            "clubSlug":    "",
+            "isStarter":   False,
+            "notes":       "",
+        })
 
     # Safety net: if Claude forgot a GK, promote the first GK from substitutes
     if not any(p.get("position") == "GK" for p in starters):
@@ -551,7 +524,7 @@ def _af_squad_as_basic_result(af_squad: list[dict], formation: str) -> dict:
         "fifaRanking": None,
         "avgAge":      None,
         "squadValue":  None,
-        "source":      "API-Football (AI-berikande misslyckades — statistik saknas)",
+        "source":      "API-Football (AI-berikande misslyckades)",
         "mode":        "pre-match",
         "starters":    [to_player(p, True)  for p in starters],
         "substitutes": [to_player(p, False) for p in substitutes],
@@ -627,6 +600,59 @@ def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
     }
 
 
+# ─── Hybrid orchestration ─────────────────────────────────────────────────────
+
+def _apply_tm_and_enrich(
+    team: str,
+    data: dict,
+    tm_data: dict | None,
+    mode: str,
+) -> dict:
+    """Apply TM overlay, set mode, and fetch logos/photos."""
+    if tm_data:
+        apply_tm_stats(data, tm_data)
+    data["mode"] = mode
+    _enrich_with_logos_and_photos(team, data["starters"] + data["substitutes"])
+    return data
+
+
+def _run_hybrid_lineup(
+    team: str,
+    formation: str,
+    mode: str,
+    client: anthropic.Anthropic,
+    squad_base: list[dict],
+    squad_source: str,
+    tm_data: dict | None,
+) -> dict:
+    """
+    Known squad + Claude XI selection + TM overlay.
+    Falls back to formation-based XI with TM stats when Claude fails.
+    """
+    log.info(
+        "[%s] Hybrid-flöde (%s): %d spelare + Claude-elva + TM",
+        team, squad_source, len(squad_base),
+    )
+    prompt = _build_enrichment_prompt(team, formation, squad_base)
+    text = run_with_search(client, prompt, max_uses=6, label=team)
+
+    try:
+        obj_match = re.search(r"\{[\s\S]*\}", text)
+        claude_data = json.loads(obj_match.group()) if obj_match else {}
+        if claude_data.get("starters"):
+            data = _merge_squad_with_enrichment(squad_base, claude_data)
+            data["source"] = claude_data.get("source") or f"{squad_source} + Claude"
+            return _apply_tm_and_enrich(team, data, tm_data, mode)
+        log.info("[%s] Claude-svar saknar starters", team)
+    except (json.JSONDecodeError, AttributeError) as e:
+        log.info("[%s] Hybrid-parsning misslyckades: %s", team, e)
+
+    log.info("[%s] Returnerar %s-trupp utan AI-elva (TM-stats tillämpas)", team, squad_source)
+    data = _af_squad_as_basic_result(squad_base, formation)
+    data["source"] = f"{squad_source} (AI-berikande misslyckades)"
+    return _apply_tm_and_enrich(team, data, tm_data, mode)
+
+
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
 def fetch_lineup(
@@ -656,31 +682,23 @@ def fetch_lineup(
                 p["clubLogoUrl"] = logo_map.get(key, "")
         return data
 
-    # ── Pre-match: try hybrid (API-Football squad + Claude enrichment) ────────
-    af_squad = _fetch_squad_af(team)
+    # ── Pre-match: fetch AF + TM in parallel, then pick best squad source ─────
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        af_future = ex.submit(_fetch_squad_af, team)
+        tm_future = ex.submit(fetch_squad_safe, team)
+        af_squad = af_future.result()
+        tm_data = tm_future.result()
+
     if af_squad:
-        log.info("[%s] Hybrid-flöde: AF-trupp (%d spelare) + Claude-berikande", team, len(af_squad))
-        prompt = _build_enrichment_prompt(team, formation, af_squad)
-        text = run_with_search(client, prompt, max_uses=6, label=team)
-        try:
-            obj_match = re.search(r"\{[\s\S]*\}", text)
-            claude_data = json.loads(obj_match.group()) if obj_match else {}
-            if claude_data.get("starters"):
-                data = _merge_squad_with_enrichment(af_squad, claude_data)
-                data["mode"] = mode
-                _enrich_with_logos_and_photos(team, data["starters"] + data["substitutes"])
-                return data
-            log.info("[%s] Claude-svar saknar starters", team)
-        except (json.JSONDecodeError, AttributeError) as e:
-            log.info("[%s] Hybrid-parsning misslyckades: %s", team, e)
+        return _run_hybrid_lineup(team, formation, mode, client, af_squad, "API-Football", tm_data)
 
-        # Claude enrichment failed but we have the AF squad — return it as a
-        # degraded result rather than running a second expensive Claude loop.
-        log.info("[%s] Returnerar AF-trupp utan AI-berikande", team)
-        return _af_squad_as_basic_result(af_squad, formation)
+    tm_squad = squad_base_from_tm(tm_data) if tm_data else []
+    if tm_squad:
+        return _run_hybrid_lineup(team, formation, mode, client, tm_squad, "Transfermarkt", tm_data)
 
-    # ── Fallback: Claude-only (only reached when AF returned no squad) ────────
-    prompt = _build_lineup_prompt(team, formation, mode)
+    # ── Last resort: Claude finds squad + XI; TM overlays stats when available ─
+    log.info("[%s] Ingen AF/TM-trupp — Claude-only med TM-overlay", team)
+    prompt = _build_claude_only_prompt(team, formation, mode)
     text = run_with_search(client, prompt, max_uses=8, label=team)
 
     try:
@@ -689,6 +707,8 @@ def fetch_lineup(
     except json.JSONDecodeError:
         return {"players": [], "raw": text}
 
+    if tm_data:
+        apply_tm_stats(data, tm_data)
     data["mode"] = mode
     all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
     _enrich_with_logos_and_photos(team, all_players)
