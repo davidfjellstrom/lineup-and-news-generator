@@ -209,7 +209,7 @@ For each player's clubName: verify their CURRENT club as of June 2026 — player
 
 STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squad registration. This is the authoritative source for jersey numbers and selected players.
 
-STEP 2 — Player stats: Go to Transfermarkt's official World Cup 2026 section (transfermarkt.com/weltmeisterschaft/startseite/pokalwettbewerb/FIWC) and find {team}'s registered squad page there. This is the authoritative source — it contains only FIFA-registered players and links directly to each player's correct profile. From each player's profile page get: age, height, preferred foot, market value, international caps and goals. For any player whose stats are still ambiguous, search "[firstName] [lastName] [their club] transfermarkt" — never search by name alone to avoid confusing players with identical names. Also get the team's total squad value, average age, and FIFA world ranking.
+STEP 2 — Player stats: Search Transfermarkt's {team} national team page for each player's age, height, preferred foot, market value, international caps and goals. Also get the team's total squad value, average age, and FIFA world ranking.
 
 STEP 3 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026". Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier. If a player's current club is unclear, search explicitly before filling in clubName.
 
@@ -256,7 +256,7 @@ CONFIRMED SQUAD ({len(squad)} players):
 
 Your tasks:
 
-STEP 1 — Transfermarkt stats: Go to Transfermarkt's official World Cup 2026 section (transfermarkt.com/weltmeisterschaft/startseite/pokalwettbewerb/FIWC) and find {team}'s registered squad page there. This is the authoritative source — it contains only FIFA-registered players and links directly to each player's correct profile. From each player's profile page get: age, height, preferred foot, market value, international caps and goals. For any player whose stats are still ambiguous, search "[firstName] [lastName] [their club] transfermarkt" — never search by name alone to avoid confusing players with identical names. Also get total squad value, average age, and FIFA world ranking.
+STEP 1 — Transfermarkt stats: Search Transfermarkt's {team} national team page for market values, caps, goals, height, and preferred foot for each player. Also get total squad value, average age, and FIFA world ranking.
 
 STEP 2 — Current clubs (CRITICAL): For every single player, you MUST verify their current club as of June 2026 by searching "[player name] club 2026" or "[player name] transfer 2026" on BBC Sport, Sky Sports, or ESPN. Players transfer frequently — the January 2026 and summer 2025 windows have both passed. Never assume a player is still at the club they were at in 2024 or earlier.
 
