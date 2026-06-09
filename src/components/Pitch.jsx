@@ -207,18 +207,17 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setLoadOpen(null)} />
                       <div className="absolute left-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                        {Object.keys(getSavedTeams()).length === 0
-                          ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
-                          : Object.keys(getSavedTeams()).map((name) => (
-                            <button
-                              key={name}
-                              onClick={() => handleLoadFromSaved('homeTeam', name)}
-                              className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors"
-                            >
-                              {name}
+                        {(() => {
+                          const teams = getSavedTeams()
+                          const names = Object.keys(teams)
+                          if (names.length === 0) return <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
+                          return names.map((name) => (
+                            <button key={name} onClick={() => handleLoadFromSaved('homeTeam', name)} className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors">
+                              <div>{name}</div>
+                              {teams[name]?.savedAt && <div className="text-gray-400" style={{ fontSize: '10px' }}>{new Date(teams[name].savedAt).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: '2-digit' })}</div>}
                             </button>
                           ))
-                        }
+                        })()}
                       </div>
                     </>
                   )}
@@ -261,18 +260,17 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setLoadOpen(null)} />
                       <div className="absolute right-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                        {Object.keys(getSavedTeams()).length === 0
-                          ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
-                          : Object.keys(getSavedTeams()).map((name) => (
-                            <button
-                              key={name}
-                              onClick={() => handleLoadFromSaved('awayTeam', name)}
-                              className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors"
-                            >
-                              {name}
+                        {(() => {
+                          const teams = getSavedTeams()
+                          const names = Object.keys(teams)
+                          if (names.length === 0) return <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
+                          return names.map((name) => (
+                            <button key={name} onClick={() => handleLoadFromSaved('awayTeam', name)} className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors">
+                              <div>{name}</div>
+                              {teams[name]?.savedAt && <div className="text-gray-400" style={{ fontSize: '10px' }}>{new Date(teams[name].savedAt).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: '2-digit' })}</div>}
                             </button>
                           ))
-                        }
+                        })()}
                       </div>
                     </>
                   )}

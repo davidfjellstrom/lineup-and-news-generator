@@ -171,7 +171,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
       })
     }
 
-    all[name] = { ...team, savedPositions }
+    all[name] = { ...team, savedPositions, savedAt: new Date().toISOString() }
     try {
       localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(all))
       const refreshed = getSavedTeams()
@@ -182,7 +182,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     }
 
     const fileName = name.replace(/\.json$/i, '') + '.json'
-    const blob = new Blob([JSON.stringify({ ...team, savedPositions }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ ...team, savedPositions, savedAt: all[name].savedAt }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -287,7 +287,7 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
               >
                 <option value="">Välj sparat lag…</option>
                 {savedTeamNames.map((n) => (
-                  <option key={n} value={n}>{n}</option>
+                  <option key={n} value={n}>{n}{savedTeams[n]?.savedAt ? ` — ${new Date(savedTeams[n].savedAt).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}` : ''}</option>
                 ))}
               </select>
               <button

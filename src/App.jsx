@@ -160,9 +160,9 @@ export default function App() {
     team.players.filter((p) => p.isStarter).forEach((p) => {
       if (positions[p.id]) savedPositions[String(p.number)] = positions[p.id]
     })
-    all[name] = { ...team, savedPositions }
+    all[name] = { ...team, savedPositions, savedAt: new Date().toISOString() }
     try { localStorage.setItem('wc2026-saved-teams', JSON.stringify(all)) } catch { alert('Kunde inte spara.') }
-    const blob = new Blob([JSON.stringify({ ...team, savedPositions }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ ...team, savedPositions, savedAt: all[name].savedAt }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
