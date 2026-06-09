@@ -174,12 +174,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               >
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
-            </div>
-            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 items-center">
-              <span className="text-gray-300">{homeTeam.coach}</span>
-              {homeTeam.fifaRanking && <span>#{homeTeam.fifaRanking}</span>}
-              {homeTeam.avgAge && <span>{String(homeTeam.avgAge).replace('.', ',')}å</span>}
-              {homeTeam.squadValue && <span>€{homeTeam.squadValue}M</span>}
               {onSaveTeam && homeTeam.players.length > 0 && (
                 <button
                   onClick={() => onSaveTeam('homeTeam')}
@@ -190,6 +184,12 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   💾 Spara lag
                 </button>
               )}
+            </div>
+            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 items-center">
+              <span className="text-gray-300">{homeTeam.coach}</span>
+              {homeTeam.fifaRanking && <span>#{homeTeam.fifaRanking}</span>}
+              {homeTeam.avgAge && <span>{String(homeTeam.avgAge).replace('.', ',')}å</span>}
+              {homeTeam.squadValue && <span>€{homeTeam.squadValue}M</span>}
             </div>
           </div>
           <div className="text-center flex flex-col items-center gap-1">
@@ -208,6 +208,16 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
+              {onSaveTeam && awayTeam.players.length > 0 && (
+                <button
+                  onClick={() => onSaveTeam('awayTeam')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
+                  style={{ background: '#1d4ed8' }}
+                  title="Spara bortalag med nuvarande positioner"
+                >
+                  💾 Spara lag
+                </button>
+              )}
               <select
                 value={awayColor}
                 onChange={(e) => pickAwayColor(e.target.value)}
@@ -228,16 +238,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               <span>{awayTeam.flag}</span>
             </div>
             <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 justify-end items-center">
-              {onSaveTeam && awayTeam.players.length > 0 && (
-                <button
-                  onClick={() => onSaveTeam('awayTeam')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
-                  style={{ background: '#1d4ed8' }}
-                  title="Spara bortalag med nuvarande positioner"
-                >
-                  💾 Spara lag
-                </button>
-              )}
               <span className="text-gray-300">{awayTeam.coach}</span>
               {awayTeam.fifaRanking && <span>#{awayTeam.fifaRanking}</span>}
               {awayTeam.avgAge && <span>{String(awayTeam.avgAge).replace('.', ',')}å</span>}
