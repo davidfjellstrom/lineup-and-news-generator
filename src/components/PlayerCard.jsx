@@ -119,7 +119,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
               height: logoBadgeSize,
               bottom: 0,
               right: 0,
-              border: '1px solid #9ca3af',
+              border: '1px solid #000',
             }}
           >
             <img
