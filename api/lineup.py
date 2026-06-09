@@ -149,16 +149,33 @@ def _fetch_squad_af(team_name: str) -> list[dict] | None:
 
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
-_TRUSTED_SOURCES_XI = """TRUSTED SOURCES — for squad lists and starting XI only:
-- FIFA.com — official squad registrations and jersey numbers
+_TRUSTED_SOURCES_XI = """MANDATORY SOURCES — you MUST base your starting XI selection on one of these sources only:
 - Sky Sports (skysports.com) — pre-match team news, injury updates, probable XIs
 - BBC Sport (bbc.com/sport) — match news and lineup reporting
 - ESPN (espn.com) — international football coverage
+- FIFA.com — official squad registrations and jersey numbers
 - Official national federation websites (e.g. fa.com, fff.fr, dfb.de)
+
+Search one of these sources first. If none of them has a probable XI for this team, say so in the source field and fall back to the next source on the list. Do NOT use any other website — not Sports Illustrated, Goal.com, Wikipedia, fan wikis, betting sites, or anything else.
 
 Player statistics, market values, and club data are filled programmatically from Transfermarkt — do NOT search for them.
 
-Do NOT use Wikipedia, fan wikis, betting sites, or any source published before January 1, 2026."""
+Do NOT use any source published before January 1, 2026."""
+
+_ALLOWED_SOURCE_DOMAINS = {
+    "skysports.com",
+    "bbc.com",
+    "bbc.co.uk",
+    "espn.com",
+    "fifa.com",
+    "fa.com",
+    "fff.fr",
+    "dfb.de",
+    "rfef.es",
+    "cbf.com.br",
+    "ussoccer.com",
+    "transfermarkt",
+}
 
 _ENRICHMENT_PLAYER_SCHEMA = """Each player has:
 - lastName: UPPERCASE — use the exact spelling from the squad list above (preserve special characters like Ø, Æ, Å)
@@ -212,6 +229,19 @@ STEP 1 — Squad list: Search FIFA.com for {team}'s official World Cup 2026 squa
 STEP 2 — Likely XI: Based on recent {team} matches, select the most probable {formation} starting eleven from that squad.
 
 {json_shape}"""
+
+
+def _validate_source(team: str, source: str) -> str:
+    """Warn if Claude cited a source outside the allowed domain list."""
+    if not source:
+        return source
+    if not any(domain in source for domain in _ALLOWED_SOURCE_DOMAINS):
+        log.warning(
+            "[%s] Claude citerade ej tillåten källa: %s — accepteras men markeras",
+            team, source,
+        )
+        return f"{source} ⚠️"
+    return source
 
 
 def _build_enrichment_prompt(team: str, formation: str, squad: list[dict]) -> str:
@@ -641,7 +671,7 @@ def _run_hybrid_lineup(
         claude_data = json.loads(obj_match.group()) if obj_match else {}
         if claude_data.get("starters"):
             data = _merge_squad_with_enrichment(squad_base, claude_data)
-            data["source"] = claude_data.get("source") or f"{squad_source} + Claude"
+            data["source"] = _validate_source(team, claude_data.get("source") or f"{squad_source} + Claude")
             return _apply_tm_and_enrich(team, data, tm_data, mode)
         log.info("[%s] Claude-svar saknar starters", team)
     except (json.JSONDecodeError, AttributeError) as e:
