@@ -442,24 +442,28 @@ def _enrich_with_logos_and_photos(team: str, all_players: list[dict]) -> None:
     Fetch club logo URLs and player photos, mutating all_players in place.
     Photos are skipped if API_FOOTBALL_KEY is not set.
     """
-    unique_pairs = list({
-        (p.get("clubCountry", ""), p.get("clubSlug", ""))
-        for p in all_players if p.get("clubSlug")
-    })
+    # Key: (clubCountry, clubSlug); value: clubName for additional slug candidates.
+    club_triples: dict[tuple[str, str], str] = {}
+    for p in all_players:
+        if p.get("clubSlug"):
+            key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
+            club_triples.setdefault(key, p.get("clubName", ""))
+    unique_triples = [(country, slug, name) for (country, slug), name in club_triples.items()]
+
     fetch_photos = bool(os.environ.get("API_FOOTBALL_KEY"))
     log.info(
         "[%s] Skrapar logotyper för %d klubbar%s…",
-        team, len(unique_pairs),
+        team, len(unique_triples),
         f" + bilder för {len(all_players)} spelare" if fetch_photos else "",
     )
 
     with ThreadPoolExecutor(max_workers=12) as ex:
-        logo_futures = [ex.submit(get_club_logo_url, *pair) for pair in unique_pairs]
+        logo_futures = [ex.submit(get_club_logo_url, *triple) for triple in unique_triples]
         photo_future = ex.submit(_fetch_team_player_photos, team) if fetch_photos else None
         logo_urls = [f.result() for f in logo_futures]
         photo_map = photo_future.result() if photo_future else {}
 
-    logo_map = dict(zip(unique_pairs, logo_urls))
+    logo_map = {(country, slug): url for (country, slug, _), url in zip(unique_triples, logo_urls)}
     for p in all_players:
         key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
         p["clubLogoUrl"] = logo_map.get(key, "")

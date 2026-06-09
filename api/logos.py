@@ -6,7 +6,7 @@ _SLUG_STRIP_PREFIXES = [
     "fc-", "afc-", "ac-", "as-", "ss-", "sc-", "rc-", "vfl-", "sv-", "rb-", "cf-", "bvb-",
 ]
 _SLUG_STRIP_SUFFIXES = [
-    "-fc", "-afc", "-ac", "-united", "-city", "-hotspur", "-wanderers",
+    "-cfc", "-fc", "-afc", "-ac", "-united", "-city", "-hotspur", "-wanderers",
     "-albion", "-athletic", "-rovers", "-town", "-aif", "-bk", "-sk", "-if", "-ff", "-fk", "-ik",
 ]
 
@@ -52,7 +52,7 @@ def _fuzzy_match_slug(target: str, candidates: list) -> str:
     # the sole basis for a match (e.g. "wanderers" is shared by Wolverhampton
     # Wanderers, Dorking Wanderers, Bolton Wanderers, etc.).
     noise = {
-        "fc", "sc", "ac", "bc", "rc", "afc", "if", "bk", "sk", "ff", "fk", "ik", "de", "la", "le",
+        "cfc", "fc", "sc", "ac", "bc", "rc", "afc", "if", "bk", "sk", "ff", "fk", "ik", "de", "la", "le",
         "wanderers", "united", "city", "hotspur", "athletic", "rovers", "town", "albion",
     }
     target_words = set(target.split("-")) - noise
@@ -66,7 +66,12 @@ def _fuzzy_match_slug(target: str, candidates: list) -> str:
     return best if best_score > 0 else ""
 
 
-def get_club_logo_url(club_country: str, club_slug: str) -> str:
+def _name_to_slug(name: str) -> str:
+    """Convert a club display name like 'Genoa CFC' to a URL slug like 'genoa-cfc'."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def get_club_logo_url(club_country: str, club_slug: str, club_name: str = "") -> str:
     """Scrape CDN URL from football-logos.cc with prefix/suffix fallbacks and fuzzy lookup."""
     if not club_country or not club_slug:
         return ""
@@ -81,6 +86,19 @@ def get_club_logo_url(club_country: str, club_slug: str) -> str:
     parts = club_slug.split("-")
     if len(parts) >= 3 and parts[0] not in slugs:
         slugs.append(parts[0])
+
+    # Also generate candidates from the display name (e.g. "Genoa CFC" → "genoa-cfc" → "genoa").
+    # TM slugs sometimes use localised spellings (e.g. "genua-cfc") that differ from the
+    # English name used by football-logos.cc ("genoa").
+    if club_name:
+        name_slug = _name_to_slug(club_name)
+        if name_slug not in slugs:
+            slugs.append(name_slug)
+        for s in _SLUG_STRIP_SUFFIXES:
+            if name_slug.endswith(s):
+                stripped = name_slug[: -len(s)]
+                if stripped not in slugs:
+                    slugs.append(stripped)
 
     for slug in slugs:
         try:
