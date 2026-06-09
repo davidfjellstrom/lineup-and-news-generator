@@ -29,7 +29,7 @@ function findTeamByName(name) {
   )
 }
 
-export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, positions, setPositions }) {
+export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, positions, setPositions, onPendingPositions }) {
   const [homeAutoFixtureId, setHomeAutoFixtureId] = useState(null)
   const [awayAutoFixtureId, setAwayAutoFixtureId] = useState(null)
 
@@ -60,7 +60,7 @@ export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, po
           onFixtureSelect={(f) => handleFixtureSelect('homeTeam', f)}
           autoSelectFixtureId={homeAutoFixtureId}
           positions={positions}
-          onPositionsChange={setPositions}
+          onPendingPositions={onPendingPositions}
         />
         <TeamPanel
           side="awayTeam"
@@ -71,7 +71,7 @@ export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, po
           onFixtureSelect={(f) => handleFixtureSelect('awayTeam', f)}
           autoSelectFixtureId={awayAutoFixtureId}
           positions={positions}
-          onPositionsChange={setPositions}
+          onPendingPositions={onPendingPositions}
         />
       </div>
 

@@ -56,7 +56,7 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions }, ref) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions, onSaveTeam, pendingPositions, onConsumePendingPositions }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -95,26 +95,30 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
     useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
 
   // When starters change (swap/add/remove): fill in defaults for new players, preserve dragged positions.
+  // If pendingPositions is set (team just loaded from save), apply those instead of defaults.
   useEffect(() => {
     const defaults = computePositions(homeLines, awayLinesDisplay)
     const starterIdSet = new Set([...homeStarters, ...awayStarters].map((p) => p.id))
     setPositions((prev) => {
       const next = {}
       starterIdSet.forEach((id) => {
-        next[id] = prev[id] || defaults[id] || { x: 50, y: 50 }
+        next[id] = (pendingPositions && pendingPositions[id]) || prev[id] || defaults[id] || { x: 50, y: 50 }
       })
       return next
     })
+    if (pendingPositions) onConsumePendingPositions?.()
   }, [starterKey])
 
   // When formation changes: reset positions to match new layout.
   // Skip on initial mount — localStorage-loaded positions should be preserved on refresh.
+  // Skip when a team is being loaded (pendingPositions handles positioning in that case).
   const isInitialFormationMount = useRef(true)
   useEffect(() => {
     if (isInitialFormationMount.current) {
       isInitialFormationMount.current = false
       return
     }
+    if (pendingPositions) return
     if (!homeStarters.length && !awayStarters.length) return
     const defaults = computePositions(homeLines, awayLinesDisplay)
     setPositions(
@@ -171,11 +175,21 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
-            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 items-center">
               <span className="text-gray-300">{homeTeam.coach}</span>
               {homeTeam.fifaRanking && <span>#{homeTeam.fifaRanking}</span>}
               {homeTeam.avgAge && <span>{String(homeTeam.avgAge).replace('.', ',')}å</span>}
               {homeTeam.squadValue && <span>€{homeTeam.squadValue}M</span>}
+              {onSaveTeam && homeTeam.players.length > 0 && (
+                <button
+                  onClick={() => onSaveTeam('homeTeam')}
+                  className="text-xs px-2 py-0.5 rounded transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.1)', color: '#d1d5db', border: '1px solid rgba(255,255,255,0.15)' }}
+                  title="Spara hemmalag med nuvarande positioner"
+                >
+                  Spara lag
+                </button>
+              )}
             </div>
           </div>
           <div className="text-center flex flex-col items-center gap-1">
@@ -213,7 +227,17 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               <span>{awayTeam.name}</span>
               <span>{awayTeam.flag}</span>
             </div>
-            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 justify-end">
+            <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 justify-end items-center">
+              {onSaveTeam && awayTeam.players.length > 0 && (
+                <button
+                  onClick={() => onSaveTeam('awayTeam')}
+                  className="text-xs px-2 py-0.5 rounded transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.1)', color: '#d1d5db', border: '1px solid rgba(255,255,255,0.15)' }}
+                  title="Spara bortalag med nuvarande positioner"
+                >
+                  Spara lag
+                </button>
+              )}
               <span className="text-gray-300">{awayTeam.coach}</span>
               {awayTeam.fifaRanking && <span>#{awayTeam.fifaRanking}</span>}
               {awayTeam.avgAge && <span>{String(awayTeam.avgAge).replace('.', ',')}å</span>}

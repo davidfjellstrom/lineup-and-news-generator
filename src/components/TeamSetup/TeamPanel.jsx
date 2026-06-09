@@ -37,7 +37,7 @@ function toPlayer(p, isStarter) {
   }
 }
 
-export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId, positions, onPositionsChange }) {
+export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId, positions, onPendingPositions }) {
   const label = side === 'homeTeam' ? 'Home Team' : 'Away Team'
   const starters = team.players.filter((p) => p.isStarter)
   const subs = team.players.filter((p) => !p.isStarter)
@@ -200,15 +200,13 @@ export default function TeamPanel({ side, team, match, setMatch, matchMode, onFi
     const { savedPositions = {}, ...teamData } = saved
     const players = (teamData.players ?? []).map((p) => ({ ...p, id: crypto.randomUUID() }))
 
-    if (Object.keys(savedPositions).length > 0 && onPositionsChange) {
-      onPositionsChange((prev) => {
-        const next = { ...prev }
-        players.forEach((p) => {
-          const pos = savedPositions[String(p.number)]
-          if (pos) next[p.id] = pos
-        })
-        return next
+    if (Object.keys(savedPositions).length > 0 && onPendingPositions) {
+      const newPositions = {}
+      players.forEach((p) => {
+        const pos = savedPositions[String(p.number)]
+        if (pos) newPositions[p.id] = pos
       })
+      onPendingPositions(newPositions)
     }
 
     setMatch((m) => ({ ...m, [side]: { ...teamData, players } }))

@@ -25,6 +25,7 @@ export default function App() {
   const [positions, setPositions] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wc2026-positions') || '{}') } catch { return {} }
   })
+  const [pendingPositions, setPendingPositions] = useState(null)
   const VALID_VIEWS = ['setup', 'pitch', 'news']
   const hashView = window.location.hash.replace('#', '')
   const [view, setView] = useState(VALID_VIEWS.includes(hashView) ? hashView : 'setup')
@@ -128,6 +129,32 @@ export default function App() {
     } finally {
       setExporting(false)
     }
+  }
+
+  function saveTeamFromLineup(side) {
+    const team = match[side]
+    if (!team.players.length) return
+    const defaultName = team.name
+      ? team.name.charAt(0) + team.name.slice(1).toLowerCase()
+      : (side === 'homeTeam' ? 'hemmalag' : 'bortalag')
+    const input = window.prompt('Döp till:', defaultName)
+    if (input === null) return
+    const name = input.trim() || defaultName
+    const all = (() => { try { return JSON.parse(localStorage.getItem('wc2026-saved-teams') || '{}') } catch { return {} } })()
+    if (all[name] && !window.confirm(`"${name}" finns redan. Skriva över?`)) return
+    const savedPositions = {}
+    team.players.filter((p) => p.isStarter).forEach((p) => {
+      if (positions[p.id]) savedPositions[String(p.number)] = positions[p.id]
+    })
+    all[name] = { ...team, savedPositions }
+    try { localStorage.setItem('wc2026-saved-teams', JSON.stringify(all)) } catch { alert('Kunde inte spara.') }
+    const blob = new Blob([JSON.stringify({ ...team, savedPositions }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name.replace(/\.json$/i, '') + '.json'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function newMatch() {
@@ -252,10 +279,11 @@ export default function App() {
             onViewLineup={() => setView('pitch')}
             positions={positions}
             setPositions={setPositions}
+            onPendingPositions={setPendingPositions}
           />
         )}
         <div style={{ display: view === 'pitch' ? undefined : 'none' }}>
-          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} positions={positions} setPositions={setPositions} />
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} positions={positions} setPositions={setPositions} onSaveTeam={saveTeamFromLineup} pendingPositions={pendingPositions} onConsumePendingPositions={() => setPendingPositions(null)} />
         </div>
         {view === 'news' && <NewsFeed match={match} />}
       </main>
