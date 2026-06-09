@@ -177,8 +177,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               {onSaveTeam && homeTeam.players.length > 0 && (
                 <button
                   onClick={() => onSaveTeam('homeTeam')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
-                  style={{ background: '#1d4ed8' }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
+                  style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', boxShadow: '0 0 14px rgba(109,40,217,0.22)' }}
                   title="Spara hemmalag med nuvarande positioner"
                 >
                   💾 Spara lag
@@ -211,8 +211,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               {onSaveTeam && awayTeam.players.length > 0 && (
                 <button
                   onClick={() => onSaveTeam('awayTeam')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
-                  style={{ background: '#1d4ed8' }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
+                  style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', boxShadow: '0 0 14px rgba(109,40,217,0.22)' }}
                   title="Spara bortalag med nuvarande positioner"
                 >
                   💾 Spara lag
