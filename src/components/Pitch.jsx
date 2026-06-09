@@ -56,7 +56,26 @@ function computePositions(homeLines, awayLines) {
   return pos
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions, onSaveTeam, pendingPositions, onConsumePendingPositions }, ref) {
+const BTN_STYLE = { background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 0 10px rgba(0,0,0,0.4)' }
+const BTN_CLASS = 'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-white transition-colors hover:brightness-110'
+
+function openFilePicker(onData) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try { onData(JSON.parse(ev.target.result)) } catch { alert('Ogiltig JSON-fil.') }
+    }
+    reader.readAsText(file)
+  }
+  input.click()
+}
+
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions, onSaveTeam, onLoadTeam, pendingPositions, onConsumePendingPositions }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -175,13 +194,13 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 {TEAM_COLORS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               {onSaveTeam && homeTeam.players.length > 0 && (
-                <button
-                  onClick={() => onSaveTeam('homeTeam')}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-white transition-colors"
-                  style={{ background: '#1e1b6e', boxShadow: '0 0 10px rgba(0,0,0,0.4)' }}
-                  title="Spara hemmalag med nuvarande positioner"
-                >
+                <button onClick={() => onSaveTeam('homeTeam')} className={BTN_CLASS} style={BTN_STYLE} title="Spara hemmalag">
                   💾 Spara lag
+                </button>
+              )}
+              {onLoadTeam && (
+                <button onClick={() => openFilePicker((data) => onLoadTeam('homeTeam', data))} className={BTN_CLASS} style={BTN_STYLE} title="Ladda hemmalag från fil">
+                  📂 Ladda
                 </button>
               )}
             </div>
@@ -208,13 +227,13 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
+              {onLoadTeam && (
+                <button onClick={() => openFilePicker((data) => onLoadTeam('awayTeam', data))} className={BTN_CLASS} style={BTN_STYLE} title="Ladda bortalag från fil">
+                  📂 Ladda
+                </button>
+              )}
               {onSaveTeam && awayTeam.players.length > 0 && (
-                <button
-                  onClick={() => onSaveTeam('awayTeam')}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-white transition-colors"
-                  style={{ background: '#1e1b6e', boxShadow: '0 0 10px rgba(0,0,0,0.4)' }}
-                  title="Spara bortalag med nuvarande positioner"
-                >
+                <button onClick={() => onSaveTeam('awayTeam')} className={BTN_CLASS} style={BTN_STYLE} title="Spara bortalag">
                   💾 Spara lag
                 </button>
               )}

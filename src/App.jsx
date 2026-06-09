@@ -131,6 +131,20 @@ export default function App() {
     }
   }
 
+  function loadTeamFromPitch(side, data) {
+    const { savedPositions = {}, ...teamData } = data
+    const players = (teamData.players ?? []).map((p) => ({ ...p, id: crypto.randomUUID() }))
+    if (Object.keys(savedPositions).length > 0) {
+      const newPositions = {}
+      players.forEach((p) => {
+        const pos = savedPositions[String(p.number)]
+        if (pos) newPositions[p.id] = pos
+      })
+      setPendingPositions(newPositions)
+    }
+    setMatch((m) => ({ ...m, [side]: { ...teamData, players } }))
+  }
+
   function saveTeamFromLineup(side) {
     const team = match[side]
     if (!team.players.length) return
@@ -283,7 +297,7 @@ export default function App() {
           />
         )}
         <div style={{ display: view === 'pitch' ? undefined : 'none' }}>
-          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} positions={positions} setPositions={setPositions} onSaveTeam={saveTeamFromLineup} pendingPositions={pendingPositions} onConsumePendingPositions={() => setPendingPositions(null)} />
+          <Pitch ref={pitchRef} match={match} matchMode={matchMode} onNoteChange={updatePlayerNote} onPhotoChange={updatePlayerPhoto} onUpdateStarter={updatePlayerStarter} onFormationChange={updateFormation} positions={positions} setPositions={setPositions} onSaveTeam={saveTeamFromLineup} onLoadTeam={loadTeamFromPitch} pendingPositions={pendingPositions} onConsumePendingPositions={() => setPendingPositions(null)} />
         </div>
         {view === 'news' && <NewsFeed match={match} />}
       </main>
