@@ -59,20 +59,8 @@ function computePositions(homeLines, awayLines) {
 const BTN_STYLE = { background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 0 10px rgba(0,0,0,0.4)' }
 const BTN_CLASS = 'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-white transition-colors hover:brightness-110'
 
-function openFilePicker(onData) {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try { onData(JSON.parse(ev.target.result)) } catch { alert('Ogiltig JSON-fil.') }
-    }
-    reader.readAsText(file)
-  }
-  input.click()
+function getSavedTeams() {
+  try { return JSON.parse(localStorage.getItem('wc2026-saved-teams') || '{}') } catch { return {} }
 }
 
 const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions, onSaveTeam, onLoadTeam, pendingPositions, onConsumePendingPositions }, ref) {
@@ -112,6 +100,21 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
 
   const { draggedId, ghost, hoverSubs, startStarterDrag, startSubDrag, pitchRef, subsRef } =
     useDragAndDrop({ onUpdateStarter, sideOf, setPositions })
+
+  const [loadOpen, setLoadOpen] = useState(null) // null | 'homeTeam' | 'awayTeam'
+
+  useEffect(() => {
+    if (!loadOpen) return
+    const close = () => setLoadOpen(null)
+    document.addEventListener('click', close, { capture: true, once: true })
+    return () => document.removeEventListener('click', close, { capture: true })
+  }, [loadOpen])
+
+  function handleLoadFromSaved(side, name) {
+    const data = getSavedTeams()[name]
+    if (data) onLoadTeam(side, data)
+    setLoadOpen(null)
+  }
 
   // When starters change (swap/add/remove): fill in defaults for new players, preserve dragged positions.
   // If pendingPositions is set (team just loaded from save), apply those instead of defaults.
@@ -199,9 +202,34 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 </button>
               )}
               {onLoadTeam && (
-                <button onClick={() => openFilePicker((data) => onLoadTeam('homeTeam', data))} className={BTN_CLASS} style={BTN_STYLE} title="Ladda hemmalag från fil">
-                  📂 Ladda
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setLoadOpen(loadOpen === 'homeTeam' ? null : 'homeTeam')}
+                    className={BTN_CLASS}
+                    style={BTN_STYLE}
+                  >
+                    📂 Ladda ▾
+                  </button>
+                  {loadOpen === 'homeTeam' && (() => {
+                    const names = Object.keys(getSavedTeams())
+                    return (
+                      <div className="absolute left-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                        {names.length === 0
+                          ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
+                          : names.map((name) => (
+                            <button
+                              key={name}
+                              onClick={() => handleLoadFromSaved('homeTeam', name)}
+                              className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors"
+                            >
+                              {name}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    )
+                  })()}
+                </div>
               )}
             </div>
             <div className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-x-2 items-center">
@@ -228,9 +256,34 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
           <div className="text-right">
             <div className="flex items-center gap-2 text-lg font-extrabold tracking-wide justify-end">
               {onLoadTeam && (
-                <button onClick={() => openFilePicker((data) => onLoadTeam('awayTeam', data))} className={BTN_CLASS} style={BTN_STYLE} title="Ladda bortalag från fil">
-                  📂 Ladda
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setLoadOpen(loadOpen === 'awayTeam' ? null : 'awayTeam')}
+                    className={BTN_CLASS}
+                    style={BTN_STYLE}
+                  >
+                    📂 Ladda ▾
+                  </button>
+                  {loadOpen === 'awayTeam' && (() => {
+                    const names = Object.keys(getSavedTeams())
+                    return (
+                      <div className="absolute right-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                        {names.length === 0
+                          ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
+                          : names.map((name) => (
+                            <button
+                              key={name}
+                              onClick={() => handleLoadFromSaved('awayTeam', name)}
+                              className="w-full text-left px-3 py-1.5 text-xs text-white hover:bg-white/10 transition-colors"
+                            >
+                              {name}
+                            </button>
+                          ))
+                        }
+                      </div>
+                    )
+                  })()}
+                </div>
               )}
               {onSaveTeam && awayTeam.players.length > 0 && (
                 <button onClick={() => onSaveTeam('awayTeam')} className={BTN_CLASS} style={BTN_STYLE} title="Spara bortalag">
