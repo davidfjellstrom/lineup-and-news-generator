@@ -222,7 +222,7 @@ def _parse_squad_table(html: str) -> list[dict]:
             "age": int(age_m.group(1)),
             "clubName": html_lib.unescape(club_m.group(1).strip()) if club_m else "",
             "clubTmId": int(club_m.group(3)) if club_m else None,
-            "clubLogoUrl": f"https://tmssl.akamaized.net/images/wappen/verysmall/{club_m.group(3)}.png" if club_m else "",
+            "clubLogoUrl": f"https://tmssl.akamaized.net/images/wappen/big/{club_m.group(3)}.png" if club_m else "",
             "height": height,
             "foot": foot,
             "caps": caps,
