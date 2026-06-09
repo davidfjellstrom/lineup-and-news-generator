@@ -7,7 +7,6 @@ import logging
 import re
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 
 from photos import _ascii_upper
 
@@ -23,47 +22,6 @@ _TM_HEADERS = {
 }
 _YOUTH_RE = re.compile(r"\bU\d{1,2}\b|Olympia|Olympic|Beach", re.I)
 
-# Search queries where the app team name differs from Transfermarkt.
-# In-memory cache for club-country lookups within a single serverless invocation.
-_club_country_cache: dict[tuple[str, int], str] = {}
-
-# TM flag titles → football-logos.cc country path segment.
-_FLAG_TO_LOGOS_COUNTRY: dict[str, str] = {
-    "england": "england",
-    "germany": "germany",
-    "spain": "spain",
-    "italy": "italy",
-    "france": "france",
-    "sweden": "sweden",
-    "portugal": "portugal",
-    "netherlands": "netherlands",
-    "belgium": "belgium",
-    "turkey": "turkey",
-    "türkiye": "turkey",
-    "saudi arabia": "saudi-arabia",
-    "united states": "united-states",
-    "brazil": "brazil",
-    "argentina": "argentina",
-    "mexico": "mexico",
-    "scotland": "scotland",
-    "austria": "austria",
-    "switzerland": "switzerland",
-    "denmark": "denmark",
-    "norway": "norway",
-    "poland": "poland",
-    "greece": "greece",
-    "croatia": "croatia",
-    "serbia": "serbia",
-    "ukraine": "ukraine",
-    "russia": "russia",
-    "japan": "japan",
-    "korea, south": "south-korea",
-    "south korea": "south-korea",
-    "australia": "australia",
-    "qatar": "qatar",
-    "uae": "united-arab-emirates",
-    "united arab emirates": "united-arab-emirates",
-}
 
 _TEAM_SEARCH_ALIASES: dict[str, str] = {
     "Türkiye": "Turkey",
@@ -119,57 +77,7 @@ def _parse_int_or_dash(text: str) -> int | None:
         return None
 
 
-def _flag_title_to_logos_country(title: str) -> str:
-    key = title.strip().lower()
-    return _FLAG_TO_LOGOS_COUNTRY.get(key, key.replace(" ", "-"))
 
-
-def _fetch_club_country(club_slug: str, verein_id: int) -> str:
-    """Resolve football-logos.cc country slug from a TM club page (cached per process)."""
-    cache_key = (club_slug, verein_id)
-    if cache_key in _club_country_cache:
-        return _club_country_cache[cache_key]
-
-    url = f"{_TM_BASE}/{club_slug}/startseite/verein/{verein_id}"
-    try:
-        html = _fetch_html(url)
-        m = re.search(
-            r"League level:</strong>\s*<span[^>]*>\s*<a[^>]+>.*?title=\"([^\"]+)\"[^>]+class=\"flaggenrahmen",
-            html,
-            re.DOTALL | re.I,
-        )
-        country = _flag_title_to_logos_country(m.group(1)) if m else ""
-    except Exception as e:
-        log.info("[TM] Club country lookup failed for %s: %s", club_slug, e)
-        country = ""
-
-    _club_country_cache[cache_key] = country
-    return country
-
-
-def _enrich_squad_club_countries(players: list[dict]) -> None:
-    """Fetch club country for each unique TM club in the squad (mutates players in place)."""
-    unique_clubs: dict[tuple[str, int], list[dict]] = {}
-    for p in players:
-        slug = p.get("clubSlug")
-        club_id = p.get("clubTmId")
-        if slug and club_id:
-            unique_clubs.setdefault((slug, club_id), []).append(p)
-
-    if not unique_clubs:
-        return
-
-    def resolve(item: tuple[str, int]) -> tuple[tuple[str, int], str]:
-        slug, club_id = item
-        return item, _fetch_club_country(slug, club_id)
-
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        results = list(ex.map(resolve, unique_clubs.keys()))
-
-    for (slug, club_id), country in results:
-        for p in unique_clubs[(slug, club_id)]:
-            if country:
-                p["clubCountry"] = country
 
 
 def _map_tm_position(label: str) -> str:
@@ -313,9 +221,8 @@ def _parse_squad_table(html: str) -> list[dict]:
             "position": position,
             "age": int(age_m.group(1)),
             "clubName": html_lib.unescape(club_m.group(1).strip()) if club_m else "",
-            "clubSlug": club_m.group(2) if club_m else "",
             "clubTmId": int(club_m.group(3)) if club_m else None,
-            "clubCountry": "",
+            "clubLogoUrl": f"https://tmssl.akamaized.net/images/wappen/verysmall/{club_m.group(3)}.png" if club_m else "",
             "height": height,
             "foot": foot,
             "caps": caps,
@@ -335,8 +242,6 @@ def fetch_squad(team_name: str, season: int = 2026) -> dict:
     players = _parse_squad_table(html)
     if not players:
         raise LookupError(f"No Transfermarkt squad rows parsed for '{team_name}'")
-
-    _enrich_squad_club_countries(players)
 
     meta = _parse_team_meta(html)
     return {
@@ -450,7 +355,7 @@ def compare_field(field: str, gen_val, tm_val) -> dict:
 
 
 _TM_PLAYER_STAT_FIELDS = ("age", "height", "foot", "caps", "goals", "marketValue")
-_TM_PLAYER_CLUB_FIELDS = ("clubName", "clubSlug", "clubCountry")
+_TM_PLAYER_CLUB_FIELDS = ("clubName", "clubLogoUrl")
 _TM_TEAM_META_FIELDS = ("squadValue", "avgAge", "fifaRanking")
 
 

@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 import anthropic
 from fastapi import HTTPException
 
-from logos import get_club_logo_url
 from photos import _af_get, _ascii_upper, _fetch_team_player_photos, _search_player_photo_af
 from transfermarkt import apply_tm_stats, fetch_squad_safe, squad_base_from_tm
 
@@ -437,43 +436,13 @@ def _merge_squad_with_enrichment(af_squad: list[dict], claude_data: dict) -> dic
 
 # ─── Logo & photo enrichment ──────────────────────────────────────────────────
 
-def _enrich_with_logos_and_photos(team: str, all_players: list[dict]) -> None:
-    """
-    Fetch club logo URLs and player photos, mutating all_players in place.
-    Photos are skipped if API_FOOTBALL_KEY is not set.
-    """
-    # Key: (clubCountry, clubSlug); value: clubName for additional slug candidates.
-    club_triples: dict[tuple[str, str], str] = {}
-    for p in all_players:
-        if p.get("clubSlug"):
-            key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
-            club_triples.setdefault(key, p.get("clubName", ""))
-    unique_triples = [(country, slug, name) for (country, slug), name in club_triples.items()]
+def _enrich_with_photos(team: str, all_players: list[dict]) -> None:
+    """Fetch player photos from API-Football and overlay them, mutating all_players in place."""
+    if not os.environ.get("API_FOOTBALL_KEY"):
+        return
+    log.info("[%s] Hämtar spelarfoton för %d spelare…", team, len(all_players))
 
-    fetch_photos = bool(os.environ.get("API_FOOTBALL_KEY"))
-    log.info(
-        "[%s] Skrapar logotyper för %d klubbar%s…",
-        team, len(unique_triples),
-        f" + bilder för {len(all_players)} spelare" if fetch_photos else "",
-    )
-
-    with ThreadPoolExecutor(max_workers=12) as ex:
-        logo_futures = [ex.submit(get_club_logo_url, *triple) for triple in unique_triples]
-        photo_future = ex.submit(_fetch_team_player_photos, team) if fetch_photos else None
-        logo_urls = [f.result() for f in logo_futures]
-        photo_map = photo_future.result() if photo_future else {}
-
-    logo_map = {(country, slug): url for (country, slug, _), url in zip(unique_triples, logo_urls)}
-    for p in all_players:
-        key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
-        p["clubLogoUrl"] = logo_map.get(key, "")
-        if p["clubLogoUrl"]:
-            log.info("  ✓ %s → …%s", p.get("clubName"), p["clubLogoUrl"][-35:])
-        else:
-            log.info(
-                "  ✗ %s (%s/%s) — inte hittad",
-                p.get("clubName"), p.get("clubCountry", "?"), p.get("clubSlug", "?"),
-            )
+    photo_map = _fetch_team_player_photos(team)
 
     unmatched = []
     for p in all_players:
@@ -486,8 +455,8 @@ def _enrich_with_logos_and_photos(team: str, all_players: list[dict]) -> None:
         else:
             unmatched.append(p)
 
-    if fetch_photos and unmatched:
-        log.info("[%s] Fallback-sökning för %d osparkade spelare…", team, len(unmatched))
+    if unmatched:
+        log.info("[%s] Fallback-sökning för %d spelare utan foto…", team, len(unmatched))
         with ThreadPoolExecutor(max_workers=8) as ex:
             fallback_photos = list(ex.map(
                 lambda p: _search_player_photo_af(p.get("firstName", ""), p.get("lastName", "")),
@@ -646,7 +615,7 @@ def _apply_tm_and_enrich(
     if tm_data:
         apply_tm_stats(data, tm_data)
     data["mode"] = mode
-    _enrich_with_logos_and_photos(team, data["starters"] + data["substitutes"])
+    _enrich_with_photos(team, data["starters"] + data["substitutes"])
     return data
 
 
@@ -701,19 +670,6 @@ def fetch_lineup(
     # ── Match mode with confirmed fixture ────────────────────────────────────
     if mode == "match" and fixture_id:
         data = _lineup_from_api_football(fixture_id, team)
-        all_players = data["starters"] + data["substitutes"]
-        unique_pairs = list({
-            (p.get("clubCountry", ""), p.get("clubSlug", ""))
-            for p in all_players if p.get("clubSlug")
-        })
-        if unique_pairs:
-            log.info("[%s] Skrapar logotyper för %d klubbar…", team, len(unique_pairs))
-            with ThreadPoolExecutor(max_workers=10) as ex:
-                urls = list(ex.map(lambda pair: get_club_logo_url(*pair), unique_pairs))
-            logo_map = dict(zip(unique_pairs, urls))
-            for p in all_players:
-                key = (p.get("clubCountry", ""), p.get("clubSlug", ""))
-                p["clubLogoUrl"] = logo_map.get(key, "")
         return data
 
     # ── Pre-match: fetch AF + TM in parallel, then pick best squad source ─────
@@ -745,5 +701,5 @@ def fetch_lineup(
         apply_tm_stats(data, tm_data)
     data["mode"] = mode
     all_players = (data.get("starters") or []) + (data.get("substitutes") or data.get("players") or [])
-    _enrich_with_logos_and_photos(team, all_players)
+    _enrich_with_photos(team, all_players)
     return data
