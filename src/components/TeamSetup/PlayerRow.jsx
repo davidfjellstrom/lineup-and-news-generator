@@ -46,7 +46,7 @@ export default function PlayerRow({ player, updatePlayer, deletePlayer }) {
           value={player.clubName}
           onChange={(e) => up('clubName', e.target.value)}
           placeholder="Club"
-          className="w-24 bg-transparent text-white text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
+          className="w-36 bg-transparent text-white text-xs outline-none rounded px-1 focus:ring-1 focus:ring-green-600"
         />
       </td>
       <td className="px-1 py-1">
