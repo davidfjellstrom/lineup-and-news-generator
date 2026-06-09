@@ -103,13 +103,6 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
 
   const [loadOpen, setLoadOpen] = useState(null) // null | 'homeTeam' | 'awayTeam'
 
-  useEffect(() => {
-    if (!loadOpen) return
-    const close = () => setLoadOpen(null)
-    document.addEventListener('click', close, { capture: true, once: true })
-    return () => document.removeEventListener('click', close, { capture: true })
-  }, [loadOpen])
-
   function handleLoadFromSaved(side, name) {
     const data = getSavedTeams()[name]
     if (data) onLoadTeam(side, data)
@@ -210,13 +203,13 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   >
                     📂 Ladda ▾
                   </button>
-                  {loadOpen === 'homeTeam' && (() => {
-                    const names = Object.keys(getSavedTeams())
-                    return (
+                  {loadOpen === 'homeTeam' && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setLoadOpen(null)} />
                       <div className="absolute left-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                        {names.length === 0
+                        {Object.keys(getSavedTeams()).length === 0
                           ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
-                          : names.map((name) => (
+                          : Object.keys(getSavedTeams()).map((name) => (
                             <button
                               key={name}
                               onClick={() => handleLoadFromSaved('homeTeam', name)}
@@ -227,8 +220,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                           ))
                         }
                       </div>
-                    )
-                  })()}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -264,13 +257,13 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   >
                     📂 Ladda ▾
                   </button>
-                  {loadOpen === 'awayTeam' && (() => {
-                    const names = Object.keys(getSavedTeams())
-                    return (
+                  {loadOpen === 'awayTeam' && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setLoadOpen(null)} />
                       <div className="absolute right-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ background: '#1e1b6e', border: '1px solid rgba(255,255,255,0.25)', minWidth: '140px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                        {names.length === 0
+                        {Object.keys(getSavedTeams()).length === 0
                           ? <div className="px-3 py-2 text-xs text-gray-400">Inga sparade lag</div>
-                          : names.map((name) => (
+                          : Object.keys(getSavedTeams()).map((name) => (
                             <button
                               key={name}
                               onClick={() => handleLoadFromSaved('awayTeam', name)}
@@ -281,8 +274,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                           ))
                         }
                       </div>
-                    )
-                  })()}
+                    </>
+                  )}
                 </div>
               )}
               {onSaveTeam && awayTeam.players.length > 0 && (
