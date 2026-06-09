@@ -183,11 +183,11 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               {onSaveTeam && homeTeam.players.length > 0 && (
                 <button
                   onClick={() => onSaveTeam('homeTeam')}
-                  className="text-xs px-2 py-0.5 rounded transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.1)', color: '#d1d5db', border: '1px solid rgba(255,255,255,0.15)' }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
+                  style={{ background: '#1d4ed8' }}
                   title="Spara hemmalag med nuvarande positioner"
                 >
-                  Spara lag
+                  💾 Spara lag
                 </button>
               )}
             </div>
@@ -231,11 +231,11 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
               {onSaveTeam && awayTeam.players.length > 0 && (
                 <button
                   onClick={() => onSaveTeam('awayTeam')}
-                  className="text-xs px-2 py-0.5 rounded transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.1)', color: '#d1d5db', border: '1px solid rgba(255,255,255,0.15)' }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:brightness-110"
+                  style={{ background: '#1d4ed8' }}
                   title="Spara bortalag med nuvarande positioner"
                 >
-                  Spara lag
+                  💾 Spara lag
                 </button>
               )}
               <span className="text-gray-300">{awayTeam.coach}</span>
