@@ -63,7 +63,7 @@ function getSavedTeams() {
   try { return JSON.parse(localStorage.getItem('wc2026-saved-teams') || '{}') } catch { return {} }
 }
 
-const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, positions, setPositions, onSaveTeam, onLoadTeam, pendingPositions, onConsumePendingPositions }, ref) {
+const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhotoChange, onUpdateStarter, onFormationChange, onPlayerChange, positions, setPositions, onSaveTeam, onLoadTeam, pendingPositions, onConsumePendingPositions }, ref) {
   const { homeTeam, awayTeam, referee } = match
 
   const homeStarters = homeTeam.players.filter((p) => p.isStarter)
@@ -356,6 +356,8 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                 }}
                 onMouseDown={(e) => {
                   if (e.target.contentEditable === 'true') return
+                  const tag = e.target.tagName
+                  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON') return
                   e.preventDefault()
                   startStarterDrag(player.id)
                 }}
@@ -367,6 +369,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   teamColor={sideOf[player.id] === 'homeTeam' ? homeColor : awayColor}
                   onNoteChange={(note) => onNoteChange(sideOf[player.id], player.id, note)}
                   onPhotoChange={onPhotoChange ? (photo) => onPhotoChange(sideOf[player.id], player.id, photo) : undefined}
+                  onPlayerChange={onPlayerChange ? (stats) => onPlayerChange(sideOf[player.id], player.id, stats) : undefined}
                 />
               </div>
             )
@@ -395,6 +398,7 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
             onSubDragStart={startSubDrag}
             onNoteChange={onNoteChange}
             onPhotoChange={onPhotoChange}
+            onPlayerChange={onPlayerChange}
             homeTop5={homeTop5}
             awayTop5={awayTop5}
             homeColor={homeColor}
