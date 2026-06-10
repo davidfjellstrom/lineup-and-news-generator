@@ -354,7 +354,13 @@ const Pitch = forwardRef(function Pitch({ match, matchMode, onNoteChange, onPhot
                   cursor: draggedId === player.id ? 'grabbing' : 'grab',
                   zIndex: draggedId === player.id ? 20 : 1,
                 }}
-
+                onMouseDown={(e) => {
+                  if (e.target.contentEditable === 'true') return
+                  const tag = e.target.tagName
+                  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON') return
+                  e.preventDefault()
+                  startStarterDrag(player.id)
+                }}
               >
                 <PlayerCard
                   player={player}
