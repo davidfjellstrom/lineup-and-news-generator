@@ -144,8 +144,27 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             {player.firstName}
           </div>
         )}
-        <div className="text-white font-bold uppercase truncate" style={{ fontSize: fontSize.last }}>
-          {player.lastName || '—'}
+        <div className="flex items-center justify-center gap-1">
+          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fontSize.last }}>
+            {player.lastName || '—'}
+          </div>
+          {onPlayerChange && (
+            <button
+              onClick={openEdit}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Redigera spelarinfo"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.5)', fontSize: 10, padding: 0,
+                lineHeight: 1, flexShrink: 0,
+                opacity: hoverStats ? 1 : 0,
+                transition: 'opacity 0.15s',
+                pointerEvents: hoverStats ? 'auto' : 'none',
+              }}
+            >
+              ✎
+            </button>
+          )}
         </div>
         {!player.clubLogo && player.clubName && (
           <div className="text-yellow-400 truncate" style={{ fontSize: fontSize.club }}>
@@ -182,31 +201,6 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
                   <span className="font-bold" style={{ color: '#fb923c' }}>€{player.marketValue}M</span>
                 )}
               </div>
-            )}
-            {/* Pencil icon — only shown on hover when onPlayerChange is wired */}
-            {onPlayerChange && (
-              <button
-                onClick={openEdit}
-                onMouseDown={(e) => e.stopPropagation()}
-                title="Redigera spelarinfo"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: -2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: 9,
-                  padding: 0,
-                  lineHeight: 1,
-                  opacity: hoverStats ? 1 : 0,
-                  transition: 'opacity 0.15s',
-                  pointerEvents: hoverStats ? 'auto' : 'none',
-                }}
-              >
-                ✎
-              </button>
             )}
           </div>
         )}
