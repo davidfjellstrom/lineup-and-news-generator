@@ -13,6 +13,11 @@ function broadPosition(player) {
   return POSITION_FROM_LABEL[player.positionLabel] ?? player.position
 }
 
+// Broad position (GK/DEF/MID/FWD) for a specific label, or null if unknown.
+export function positionFromLabel(label) {
+  return POSITION_FROM_LABEL[label] ?? null
+}
+
 // Lateral rank: 0 = left touchline, 1 = right touchline (from home team's perspective).
 // Used to sort players within a line so that LW/LB appear near the top of the screen
 // (home team's left side) and RW/RB near the bottom.

@@ -1,4 +1,5 @@
 import { sameTeam } from '../utils/teamNames'
+import { positionFromLabel } from '../utils/formations'
 
 const VALID_POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
 
@@ -69,8 +70,10 @@ export async function resolveFixture(homeName, awayName) {
 }
 
 // Merge a confirmed lineup into an existing team. Players already in the squad
-// (matched by shirt number, then last name) keep their id, notes, photos and
-// stats — so commentator prep and custom pitch positions survive the switch.
+// keep their id, notes, photos and stats — so commentator prep and custom pitch
+// positions survive the switch. Identity is matched on NAME, never on shirt
+// number alone: estimated squads can assign the same number to a different
+// player, and merging by number then shows the wrong person in the XI.
 export function mergeConfirmedTeam(team, data) {
   const starters = data.starters ?? []
   if (starters.length === 0) throw new Error('Inga spelare returnerades')
@@ -79,30 +82,50 @@ export function mergeConfirmedTeam(team, data) {
     ...(data.substitutes ?? []).map((p) => ({ ...p, isStarter: false })),
   ]
 
-  const norm = (s) => (s || '').toString().toUpperCase().trim()
+  // Comparison key: uppercase, diacritics stripped ('BAŠIĆ' matches 'BASIC').
+  const norm = (s) =>
+    (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
   // Only real players (with a name) are merge candidates — empty formation
-  // placeholders share shirt numbers by coincidence, not identity.
+  // placeholders carry no identity.
   const remaining = team.players.filter((p) => norm(p.lastName))
 
   const takeExisting = (cp) => {
-    let idx = remaining.findIndex(
-      (p) => p.number && cp.number && String(p.number) === String(cp.number),
-    )
-    if (idx === -1) {
-      idx = remaining.findIndex((p) => norm(p.lastName) === norm(cp.lastName))
+    const wanted = norm(cp.lastName)
+    if (!wanted) return null
+    let candidates = remaining.filter((p) => norm(p.lastName) === wanted)
+    if (candidates.length === 0) {
+      // Spelling variants like 'DE FOUGEROLLES' vs 'FOUGEROLLES'
+      candidates = remaining.filter((p) => {
+        const have = norm(p.lastName)
+        return have.length >= 4 && wanted.length >= 4 && (have.includes(wanted) || wanted.includes(have))
+      })
     }
-    return idx === -1 ? null : remaining.splice(idx, 1)[0]
+    if (candidates.length === 0) return null
+    // Same surname twice in a squad: prefer same number, then same first initial.
+    const pick =
+      candidates.find((p) => cp.number && String(p.number) === String(cp.number)) ??
+      candidates.find((p) => norm(p.firstName)[0] === norm(cp.firstName)[0]) ??
+      candidates[0]
+    remaining.splice(remaining.indexOf(pick), 1)
+    return pick
   }
 
   const players = confirmed.map((cp) => {
     const existing = takeExisting(cp)
     if (!existing) return toPlayer(cp, cp.isStarter)
+    // The matchday team sheet is the truth for number and position. Keep the
+    // richer pre-match label (RW, CDM, …) only when it agrees with the confirmed
+    // role, so formation lines group correctly (e.g. estimated RW playing RM).
+    const position = VALID_POSITIONS.includes(cp.position) ? cp.position : existing.position
+    const labelAgrees = positionFromLabel(existing.positionLabel) === position
     return {
       ...existing,
       number: cp.number || existing.number,
-      firstName: existing.firstName || norm(cp.firstName),
-      lastName: existing.lastName || norm(cp.lastName),
+      firstName: existing.firstName || (cp.firstName ?? '').toUpperCase(),
+      lastName: existing.lastName || (cp.lastName ?? '').toUpperCase(),
       photo: existing.photo || cp.photo || '',
+      position,
+      positionLabel: labelAgrees ? existing.positionLabel : '',
       isStarter: cp.isStarter,
     }
   })
