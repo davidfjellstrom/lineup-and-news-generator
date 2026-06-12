@@ -536,6 +536,32 @@ def _af_squad_as_basic_result(af_squad: list[dict], formation: str) -> dict:
 
 # ─── Match-mode lineup from API-Football ──────────────────────────────────────
 
+def _norm_team_name(name: str) -> str:
+    """Normalize a team name for comparison: AF uses e.g. 'Bosnia & Herzegovina'
+    while the app uses 'BOSNIA AND HERZEGOVINA'."""
+    return re.sub(r"\s+", " ", name.lower().replace("&", "and")).strip()
+
+
+def _match_lineup_team(lineups: list[dict], team_name: str) -> dict:
+    """Pick the lineup entry matching team_name. Raises 404 instead of silently
+    returning the wrong team — a confirmed XI for the wrong side is worse than none."""
+    wanted = _norm_team_name(team_name)
+    for t in lineups:
+        if _norm_team_name(t["team"]["name"]) == wanted:
+            return t
+    # Fallback: containment (e.g. 'KOREA REPUBLIC' vs 'South Korea' won't match,
+    # but 'IR Iran' vs 'IRAN' will)
+    for t in lineups:
+        af = _norm_team_name(t["team"]["name"])
+        if af in wanted or wanted in af:
+            return t
+    available = ", ".join(t["team"]["name"] for t in lineups)
+    raise HTTPException(
+        status_code=404,
+        detail=f"Team '{team_name}' not in fixture lineups (teams: {available}).",
+    )
+
+
 def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
     """Fetch confirmed lineup from API-Football for a given fixture."""
     with ThreadPoolExecutor(max_workers=2) as ex:
@@ -560,11 +586,7 @@ def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
             "photo": p.get("photo", ""),
         }
 
-    team_name_lower = team_name.lower()
-    team_data = next(
-        (t for t in lineups if t["team"]["name"].lower() == team_name_lower),
-        lineups[0],
-    )
+    team_data = _match_lineup_team(lineups, team_name)
     coach = (team_data.get("coach") or {}).get("name", "").upper()
 
     def build_player(p_entry, is_starter: bool) -> dict:
@@ -596,6 +618,7 @@ def _lineup_from_api_football(fixture_id: int, team_name: str) -> dict:
     return {
         "flag": "",
         "coach": coach,
+        "formation": team_data.get("formation") or "",
         "source": f"API-Football (fixture #{fixture_id})",
         "mode": "match",
         "starters": starters,

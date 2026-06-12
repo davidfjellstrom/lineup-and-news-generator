@@ -2,11 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import Pitch from './components/Pitch'
 import TeamSetup from './components/TeamSetup'
 import NewsFeed from './components/NewsFeed'
+import { loadConfirmedMatch } from './services/matchLineup'
 const emptyTeam = { name: '', flag: '', formation: '4-3-3', coach: '', players: [], fifaRanking: null, avgAge: null, squadValue: null }
 const emptyMatch = {
   homeTeam: { ...emptyTeam },
   awayTeam: { ...emptyTeam },
   referee: '',
+  fixture: null,
 }
 
 const STORAGE_KEY = 'wc2026-match'
@@ -31,7 +33,30 @@ export default function App() {
   const [view, setView] = useState(VALID_VIEWS.includes(hashView) ? hashView : 'setup')
   const [exporting, setExporting] = useState(false)
   const [matchMode, setMatchMode] = useState('pre-match') // 'pre-match' | 'match'
+  const [matchLoading, setMatchLoading] = useState(false)
+  const [matchError, setMatchError] = useState(null)
   const pitchRef = useRef(null)
+
+  // In the Lineup view, switching to Match loads the confirmed XI from
+  // API-Football before flipping the mode — so the badge never lies.
+  // In Setup the toggle only flips: TeamPanel has its own manual fetch flow.
+  async function switchMatchMode(mode) {
+    setMatchError(null)
+    if (mode === 'pre-match' || view !== 'pitch') {
+      setMatchMode(mode)
+      return
+    }
+    setMatchLoading(true)
+    try {
+      const { fixture, homeTeam, awayTeam } = await loadConfirmedMatch(match)
+      setMatch((m) => ({ ...m, fixture, homeTeam, awayTeam }))
+      setMatchMode('match')
+    } catch (err) {
+      setMatchError(err.message)
+    } finally {
+      setMatchLoading(false)
+    }
+  }
 
   useEffect(() => {
     window.location.hash = view
@@ -238,31 +263,43 @@ export default function App() {
 
         <div style={{ minWidth: 120 }} className="flex justify-end items-center gap-2">
           {/* Match mode toggle */}
-          <div
-            className="flex items-center rounded-lg overflow-hidden text-xs font-semibold"
-            style={{ border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            <button
-              onClick={() => setMatchMode('pre-match')}
-              className="px-3 py-1.5 transition-colors"
-              style={{
-                background: matchMode === 'pre-match' ? 'linear-gradient(135deg, #4338ca, #7c3aed)' : 'transparent',
-                color: matchMode === 'pre-match' ? 'white' : '#6b7280',
-                boxShadow: matchMode === 'pre-match' ? '0 0 12px rgba(109,40,217,0.22)' : 'none',
-              }}
+          <div className="relative">
+            <div
+              className="flex items-center rounded-lg overflow-hidden text-xs font-semibold"
+              style={{ border: '1px solid rgba(255,255,255,0.12)' }}
             >
-              Pre-match
-            </button>
-            <button
-              onClick={() => setMatchMode('match')}
-              className="px-3 py-1.5 transition-colors"
-              style={{
-                background: matchMode === 'match' ? '#14532d' : 'transparent',
-                color: matchMode === 'match' ? '#86efac' : '#6b7280',
-              }}
-            >
-              Match
-            </button>
+              <button
+                onClick={() => switchMatchMode('pre-match')}
+                disabled={matchLoading}
+                className="px-3 py-1.5 transition-colors"
+                style={{
+                  background: matchMode === 'pre-match' ? 'linear-gradient(135deg, #4338ca, #7c3aed)' : 'transparent',
+                  color: matchMode === 'pre-match' ? 'white' : '#6b7280',
+                  boxShadow: matchMode === 'pre-match' ? '0 0 12px rgba(109,40,217,0.22)' : 'none',
+                }}
+              >
+                Pre-match
+              </button>
+              <button
+                onClick={() => switchMatchMode('match')}
+                disabled={matchLoading}
+                className="px-3 py-1.5 transition-colors"
+                style={{
+                  background: matchMode === 'match' ? '#14532d' : 'transparent',
+                  color: matchMode === 'match' || matchLoading ? '#86efac' : '#6b7280',
+                }}
+              >
+                {matchLoading ? '⟳ Laddar…' : 'Match'}
+              </button>
+            </div>
+            {matchError && (
+              <div
+                className="absolute right-0 top-full mt-1 px-2 py-1 rounded text-xs z-50"
+                style={{ background: '#7f1d1d', color: '#fecaca', width: 'max-content', maxWidth: 320 }}
+              >
+                {matchError}
+              </div>
+            )}
           </div>
 
           {view === 'pitch' && (

@@ -1,33 +1,6 @@
 import { useState } from 'react'
-import { WC2026_TEAMS } from '../../data/wc2026Teams'
+import { findTeamByName } from '../../utils/teamNames'
 import TeamPanel from './TeamPanel'
-
-const AF_NAME_ALIASES = {
-  'korea republic': 'South Korea',
-  'south korea': 'South Korea',
-  "cote d'ivoire": 'Ivory Coast',
-  'ivory coast': 'Ivory Coast',
-  'turkey': 'Türkiye',
-  'turkiye': 'Türkiye',
-  'usa': 'United States',
-  'united states': 'United States',
-  'bosnia': 'Bosnia and Herzegovina',
-  'dr congo': 'DR Congo',
-  'congo dr': 'DR Congo',
-}
-
-function findTeamByName(name) {
-  const lower = name.toLowerCase()
-  const canonical = AF_NAME_ALIASES[lower] || name
-  return (
-    WC2026_TEAMS.find((t) => t.name.toUpperCase() === canonical.toUpperCase()) ||
-    WC2026_TEAMS.find(
-      (t) =>
-        t.name.toUpperCase().includes(lower.toUpperCase()) ||
-        lower.toUpperCase().includes(t.name.toUpperCase()),
-    )
-  )
-}
 
 export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, positions, setPositions, onPendingPositions }) {
   const [homeAutoFixtureId, setHomeAutoFixtureId] = useState(null)
@@ -38,12 +11,14 @@ export default function TeamSetup({ match, setMatch, matchMode, onViewLineup, po
     const myName = match[side].name.toUpperCase()
     const opponentName = fixture.home.toUpperCase() === myName ? fixture.away : fixture.home
     const found = findTeamByName(opponentName)
-    if (found) {
-      setMatch((m) => ({
-        ...m,
-        [otherSide]: { ...m[otherSide], name: found.name.toUpperCase(), flag: found.flag },
-      }))
-    }
+    setMatch((m) => ({
+      ...m,
+      // Remember the fixture so the Lineup view can load the confirmed XI later.
+      fixture,
+      ...(found
+        ? { [otherSide]: { ...m[otherSide], name: found.name.toUpperCase(), flag: found.flag } }
+        : {}),
+    }))
     if (otherSide === 'awayTeam') setAwayAutoFixtureId(fixture.fixtureId)
     else setHomeAutoFixtureId(fixture.fixtureId)
   }

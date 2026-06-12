@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { FORMATIONS, getEmptyStartersForFormation } from '../../utils/formations'
+import { toPlayer } from '../../services/matchLineup'
 import TeamPicker from './TeamPicker'
 import PlayerRow from './PlayerRow'
 import FixturePicker from './FixturePicker'
@@ -11,30 +12,6 @@ const SAVED_TEAMS_KEY = 'wc2026-saved-teams'
 
 function getSavedTeams() {
   try { return JSON.parse(localStorage.getItem(SAVED_TEAMS_KEY) || '{}') } catch { return {} }
-}
-
-const VALID_POSITIONS = ['GK', 'DEF', 'MID', 'FWD']
-
-function toPlayer(p, isStarter) {
-  return {
-    id: crypto.randomUUID(),
-    number: p.number ?? '',
-    firstName: (p.firstName ?? '').toUpperCase(),
-    lastName: (p.lastName ?? '').toUpperCase(),
-    position: VALID_POSITIONS.includes(p.position) ? p.position : 'MID',
-    positionLabel: p.positionLabel ?? '',
-    photo: p.photo ?? '',
-    clubLogo: p.clubLogoUrl ?? '',
-    clubName: p.clubName ?? '',
-    notes: '',
-    isStarter,
-    age: p.age ?? null,
-    height: p.height ?? null,
-    foot: p.foot ?? null,
-    caps: p.caps ?? null,
-    goals: p.goals ?? null,
-    marketValue: p.marketValue ?? null,
-  }
 }
 
 export default function TeamPanel({ side, team, match, setMatch, matchMode, onFixtureSelect, autoSelectFixtureId, positions, onPendingPositions }) {
