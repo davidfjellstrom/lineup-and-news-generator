@@ -10,6 +10,14 @@ function statsColorFromTeamColor(hex) {
   return `rgba(${r},${g},${b},0.85)`
 }
 
+// Shrink long names to fit the card instead of truncating — a clipped name is
+// useless on air. glyphEm ≈ average glyph width in em for uppercase text.
+function fitFontSize(text, basePx, maxWidthPx, glyphEm = 0.62) {
+  const len = (text || '').length
+  if (!len) return basePx
+  return Math.max(8, Math.min(basePx, maxWidthPx / (len * glyphEm)))
+}
+
 const Silhouette = ({ size }) => (
   <svg
     viewBox="0 0 24 24"
@@ -140,12 +148,13 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
       {/* Name */}
       <div className="text-center mt-1 leading-tight w-full" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.95)' }}>
         {player.firstName && (
-          <div className="text-white/60 uppercase truncate" style={{ fontSize: fontSize.first }}>
+          <div className="text-white/60 uppercase truncate" style={{ fontSize: fitFontSize(player.firstName, fontSize.first, 100, 0.55) }}>
             {player.firstName}
           </div>
         )}
         <div className="flex items-center justify-center gap-1">
-          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fontSize.last }}>
+          {/* 90 = card width minus the always-reserved edit-icon slot */}
+          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fitFontSize(player.lastName, fontSize.last, 90) }}>
             {player.lastName || '—'}
           </div>
           {onPlayerChange && (
@@ -167,7 +176,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
           )}
         </div>
         {!player.clubLogo && player.clubName && (
-          <div className="text-yellow-400 truncate" style={{ fontSize: fontSize.club }}>
+          <div className="text-yellow-400 truncate" style={{ fontSize: fitFontSize(player.clubName, fontSize.club, 100, 0.55) }}>
             {player.clubName}
           </div>
         )}
