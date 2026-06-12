@@ -18,7 +18,7 @@ from mangum import Mangum
 import anthropic
 from dotenv import load_dotenv
 
-from photos import _af_get
+from photos import _af_get, find_national_team_af
 from lineup import run_with_search, fetch_lineup
 from news import fetch_news
 
@@ -120,12 +120,11 @@ def get_lineup(
 def get_fixtures(team: str = Query(...)):
     """Return upcoming WC 2026 fixtures for a team name using API-Football."""
     try:
-        teams_resp = _af_get("teams", {"name": team, "league": 1, "season": 2026})
-        teams = teams_resp.get("response", [])
-        if not teams:
+        af_team = find_national_team_af(team)
+        if not af_team:
             raise HTTPException(status_code=404, detail=f"Team '{team}' not found in WC 2026")
-        team_id = teams[0]["team"]["id"]
-        team_name = teams[0]["team"]["name"]
+        team_id = af_team["id"]
+        team_name = af_team["name"]
 
         fixtures_resp = _af_get("fixtures", {"team": team_id, "league": 1, "season": 2026})
         fixtures = fixtures_resp.get("response", [])

@@ -32,6 +32,58 @@ def _ascii_upper(s: str) -> str:
     return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").upper()
 
 
+_WC_LEAGUE_ID = 1
+_WC_SEASON = 2026
+
+# App spellings that no amount of normalization can bridge to AF's name.
+_AF_TEAM_ALIASES = {"united states": "usa"}
+
+# Note: cache lives in process memory; on Vercel each cold-start instance resets it.
+_wc_teams_cache: list | None = None
+
+
+def _team_key(name: str) -> str:
+    """Comparison key for team names: ascii, lowercase, '&' → 'and'."""
+    s = _ascii_upper(name).lower().replace("&", "and")
+    return _AF_TEAM_ALIASES.get(" ".join(s.split()), " ".join(s.split()))
+
+
+def _wc_teams() -> list[dict]:
+    global _wc_teams_cache
+    if _wc_teams_cache is None:
+        resp = _af_get("teams", {"league": _WC_LEAGUE_ID, "season": _WC_SEASON})
+        _wc_teams_cache = [t["team"] for t in resp.get("response", [])]
+    return _wc_teams_cache
+
+
+def find_national_team_af(team_name: str) -> dict | None:
+    """Resolve a WC 2026 team via API-Football, tolerating spelling differences.
+
+    AF's name= lookup needs their exact spelling ('Bosnia & Herzegovina',
+    'Congo DR', 'USA'), which the app's canonical names often miss. Exact lookup
+    first; otherwise match against the full WC team list by normalized name,
+    token order, and containment.
+    """
+    resp = _af_get("teams", {"name": team_name, "league": _WC_LEAGUE_ID, "season": _WC_SEASON})
+    teams = resp.get("response", [])
+    if teams:
+        return teams[0]["team"]
+
+    wanted = _team_key(team_name)
+    candidates = _wc_teams()
+    for t in candidates:
+        if _team_key(t["name"]) == wanted:
+            return t
+    for t in candidates:  # 'DR Congo' vs 'Congo DR'
+        if sorted(_team_key(t["name"]).split()) == sorted(wanted.split()):
+            return t
+    for t in candidates:  # 'Cape Verde' vs 'Cape Verde Islands'
+        key = _team_key(t["name"])
+        if key in wanted or wanted in key:
+            return t
+    return None
+
+
 def _search_player_photo_af(first_name: str, last_name: str) -> str:
     """Fallback: search API-Football by name for a single player's photo URL."""
     query = f"{first_name} {last_name}".strip()

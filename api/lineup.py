@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import anthropic
 from fastapi import HTTPException
 
-from photos import _af_get, _ascii_upper, _fetch_team_player_photos, _search_player_photo_af
+from photos import _af_get, _ascii_upper, _fetch_team_player_photos, _search_player_photo_af, find_national_team_af
 from transfermarkt import apply_tm_stats, fetch_squad_safe, squad_base_from_tm
 
 log = logging.getLogger("lineup-api")
@@ -98,17 +98,12 @@ def _fetch_squad_af(team_name: str) -> list[dict] | None:
     if not os.environ.get("API_FOOTBALL_KEY"):
         return None
     try:
-        teams_resp = _af_get("teams", {"name": team_name, "league": 1, "season": 2026})
-        teams = teams_resp.get("response", [])
-        if not teams:
-            # Retry without league filter — some teams may not be registered yet
-            teams_resp = _af_get("teams", {"name": team_name, "type": "National"})
-            teams = teams_resp.get("response", [])
-        if not teams:
+        af_team = find_national_team_af(team_name)
+        if not af_team:
             log.info("[%s] AF: lag inte hittat, hoppar över hybrid-flödet", team_name)
             return None
 
-        team_id = teams[0]["team"]["id"]
+        team_id = af_team["id"]
         squad_resp = _af_get("players/squads", {"team": team_id})
         squad_data = squad_resp.get("response", [])
         if not squad_data:

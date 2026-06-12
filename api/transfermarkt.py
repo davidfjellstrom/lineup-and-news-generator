@@ -23,14 +23,16 @@ _TM_HEADERS = {
 _YOUTH_RE = re.compile(r"\bU\d{1,2}\b|Olympia|Olympic|Beach", re.I)
 
 
+# Keys must be lowercase — looked up case-insensitively, since the frontend
+# sends team names in uppercase ('BOSNIA AND HERZEGOVINA').
 _TEAM_SEARCH_ALIASES: dict[str, str] = {
-    "Türkiye": "Turkey",
-    "United States": "United States",
-    "Ivory Coast": "Ivory Coast",
-    "DR Congo": "DR Congo",
-    "Bosnia and Herzegovina": "Bosnia-Herzegovina",
-    "South Korea": "Korea Republic",
-    "Czech Republic": "Czech Republic",
+    "türkiye": "Turkey",
+    "united states": "United States",
+    "ivory coast": "Ivory Coast",
+    "dr congo": "DR Congo",
+    "bosnia and herzegovina": "Bosnia-Herzegovina",
+    "south korea": "Korea Republic",
+    "czech republic": "Czech Republic",
 }
 
 
@@ -103,7 +105,7 @@ def _split_name(full_name: str) -> tuple[str, str]:
 
 def resolve_team(team_name: str) -> tuple[str, int]:
     """Return Transfermarkt slug and verein ID for a senior national team."""
-    query = _TEAM_SEARCH_ALIASES.get(team_name, team_name)
+    query = _TEAM_SEARCH_ALIASES.get(team_name.lower(), team_name)
     url = f"{_TM_BASE}/schnellsuche/ergebnis/schnellsuche?query={urllib.parse.quote(query)}"
     html = _fetch_html(url)
     candidates = re.findall(
