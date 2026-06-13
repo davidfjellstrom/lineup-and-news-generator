@@ -103,8 +103,18 @@ def _split_name(full_name: str) -> tuple[str, str]:
     return " ".join(parts[:-1]).upper(), parts[-1].upper()
 
 
+def _is_non_senior_tm(label: str) -> bool:
+    """True for TM results that can never be a senior national team entry."""
+    label_l = label.lower()
+    return bool(_YOUTH_RE.search(label)) or "amateur" in label_l or "club" in label_l
+
+
 def resolve_team(team_name: str) -> tuple[str, int]:
-    """Return Transfermarkt slug and verein ID for a senior national team."""
+    """Return Transfermarkt slug and verein ID for a senior national team.
+
+    Matching runs in two separate passes to avoid false containment positives:
+    e.g. 'Amateur club (Japan)' contains 'japan' but must not win over 'Japan'.
+    """
     query = _TEAM_SEARCH_ALIASES.get(team_name.lower(), team_name)
     url = f"{_TM_BASE}/schnellsuche/ergebnis/schnellsuche?query={urllib.parse.quote(query)}"
     html = _fetch_html(url)
@@ -115,20 +125,26 @@ def resolve_team(team_name: str) -> tuple[str, int]:
     team_lower = team_name.lower()
     query_lower = query.lower()
 
+    # Pass 1: exact label match (case-insensitive).
     for slug, verein_id, label in candidates:
-        label_lower = label.strip().lower()
-        if _YOUTH_RE.search(label):
+        if _is_non_senior_tm(label):
             continue
-        if label_lower in {team_lower, query_lower}:
+        if label.strip().lower() in {team_lower, query_lower}:
             return slug, int(verein_id)
+
+    # Pass 2: containment match — only after no exact match found.
+    for slug, verein_id, label in candidates:
+        if _is_non_senior_tm(label):
+            continue
+        label_lower = label.strip().lower()
         if team_lower in label_lower or query_lower in label_lower:
             return slug, int(verein_id)
 
-    # Fallback: first non-youth national-team-looking result.
+    # Pass 3: first plausible-looking result (last resort).
     for slug, verein_id, label in candidates:
-        if _YOUTH_RE.search(label):
+        if _is_non_senior_tm(label):
             continue
-        if "goa" in slug or "club" in label.lower():
+        if "goa" in slug:
             continue
         return slug, int(verein_id)
 
@@ -182,9 +198,6 @@ def _parse_squad_table(html: str) -> list[dict]:
 
     players: list[dict] = []
     for row in rows:
-        if "rn_nummer" not in row:
-            continue
-
         num_m = re.search(r"rn_nummer>(\d+)", row)
         name_m = re.search(
             r'class="hauptlink">\s*<a[^>]+>\s*((?:[^<]|<(?!\/a>))+?)\s*</a>',
@@ -200,7 +213,9 @@ def _parse_squad_table(html: str) -> list[dict]:
             row,
         )
         mv_m = re.search(r'rechts hauptlink"><a[^>]*>([^<]+)</a>', row)
-        if not (num_m and name_m and age_m and full_name_raw.strip()):
+        # num_m is optional — some national team pages (e.g. Asian federations)
+        # omit jersey numbers; skip only when name or age is missing.
+        if not (name_m and age_m and full_name_raw.strip()):
             continue
 
         # Height, foot, caps, goals appear in order after the club cell.
@@ -216,7 +231,7 @@ def _parse_squad_table(html: str) -> list[dict]:
         pos_m = re.search(r"</tr>\s*<tr>\s*<td>\s*([^<]+?)\s*</td>", row, re.DOTALL)
         position = _map_tm_position(pos_m.group(1)) if pos_m else "MID"
         players.append({
-            "number": int(num_m.group(1)),
+            "number": int(num_m.group(1)) if num_m else 0,
             "firstName": first,
             "lastName": last,
             "fullName": full_name,

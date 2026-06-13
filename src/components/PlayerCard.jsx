@@ -152,9 +152,8 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
             {player.firstName}
           </div>
         )}
-        <div className="flex items-center justify-center gap-1">
-          {/* 90 = card width minus the always-reserved edit-icon slot */}
-          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fitFontSize(player.lastName, fontSize.last, 90) }}>
+        <div className="relative flex items-center justify-center">
+          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fitFontSize(player.lastName, fontSize.last, 90, 0.65), maxWidth: 90 }}>
             {player.lastName || '—'}
           </div>
           {onPlayerChange && (
@@ -162,10 +161,12 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
               onClick={openEdit}
               onMouseDown={(e) => e.stopPropagation()}
               title="Redigera spelarinfo"
+              className="absolute"
               style={{
+                right: 0,
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'rgba(255,255,255,0.5)', fontSize: 10, padding: 0,
-                lineHeight: 1, flexShrink: 0,
+                lineHeight: 1,
                 opacity: hoverStats ? 1 : 0,
                 transition: 'opacity 0.15s',
                 pointerEvents: hoverStats ? 'auto' : 'none',
