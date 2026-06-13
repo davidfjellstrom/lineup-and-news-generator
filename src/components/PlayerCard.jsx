@@ -1,5 +1,16 @@
 import { useRef, useEffect, useState } from 'react'
 
+const _canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
+
+function fitFontSize(text, basePx, maxWidthPx) {
+  if (!text?.length || !_canvas) return basePx
+  const ctx = _canvas.getContext('2d')
+  ctx.font = `bold ${basePx}px ui-sans-serif, system-ui, -apple-system, sans-serif`
+  const w = ctx.measureText(text).width
+  if (w <= maxWidthPx) return basePx
+  return Math.max(8, (basePx * maxWidthPx) / w)
+}
+
 function statsColorFromTeamColor(hex) {
   if (!hex || !hex.startsWith('#') || hex.length < 7) return 'rgba(147,197,253,0.85)'
   const r = parseInt(hex.slice(1, 3), 16)
@@ -10,13 +21,6 @@ function statsColorFromTeamColor(hex) {
   return `rgba(${r},${g},${b},0.85)`
 }
 
-// Shrink long names to fit the card instead of truncating — a clipped name is
-// useless on air. glyphEm ≈ average glyph width in em for uppercase text.
-function fitFontSize(text, basePx, maxWidthPx, glyphEm = 0.62) {
-  const len = (text || '').length
-  if (!len) return basePx
-  return Math.max(8, Math.min(basePx, maxWidthPx / (len * glyphEm)))
-}
 
 const Silhouette = ({ size }) => (
   <svg
@@ -148,12 +152,12 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
       {/* Name */}
       <div className="text-center mt-1 leading-tight w-full" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.95)' }}>
         {player.firstName && (
-          <div className="text-white/60 uppercase truncate" style={{ fontSize: fitFontSize(player.firstName, fontSize.first, 100, 0.55) }}>
+          <div className="text-white/60 uppercase" style={{ fontSize: fontSize.first }}>
             {player.firstName}
           </div>
         )}
         <div className="relative flex items-center justify-center">
-          <div className="text-white font-bold uppercase truncate" style={{ fontSize: fitFontSize(player.lastName, fontSize.last, 90, 0.65), maxWidth: 90 }}>
+          <div className="text-white font-bold uppercase" style={{ fontSize: fitFontSize(player.lastName, fontSize.last, 100) }}>
             {player.lastName || '—'}
           </div>
           {onPlayerChange && (
@@ -177,7 +181,7 @@ export default function PlayerCard({ player, compact = false, onNoteChange, onPh
           )}
         </div>
         {!player.clubLogo && player.clubName && (
-          <div className="text-yellow-400 truncate" style={{ fontSize: fitFontSize(player.clubName, fontSize.club, 100, 0.55) }}>
+          <div className="text-yellow-400 truncate" style={{ fontSize: fontSize.club }}>
             {player.clubName}
           </div>
         )}
